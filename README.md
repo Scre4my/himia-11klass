@@ -1,46 +1,59 @@
-# Getting Started with Create React App
+# Магазин товаров с Docker
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Быстрый старт
 
-## Available Scripts
+### Запуск в Docker (рекомендуется)
 
-In the project directory, you can run:
+```bash
+docker-compose up -d
+```
 
-### `npm start`
+Приложение будет доступно по адресу:
+- Фронтенд: http://localhost:3000
+- Бэкенд API: http://localhost:5000
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Локальная разработка
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+#### Бэкенд
+```bash
+cd server
+npm install
+npm start
+```
 
-### `npm test`
+#### Фронтенд
+```bash
+npm install
+npm start
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## API Endpoints
 
-### `npm run build`
+- `GET /api/products` - получить все товары
+- `GET /api/products/:id` - получить товар по ID
+- `POST /api/products` - создать товар
+- `PUT /api/products/:id` - обновить товар
+- `DELETE /api/products/:id` - удалить товар
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Структура проекта
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+├── server/           # Бэкенд (Node.js + Express)
+├── src/              # Фронтенд (React)
+├── docker-compose.yml
+├── Dockerfile.client # Фронтенд Dockerfile
+└── nginx.conf        # Nginx конфигурация
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Переменные окружения
 
-### `npm run eject`
+### Сервер
+- `PORT` - порт сервера (по умолчанию 5000)
+- `DB_HOST` - хост PostgreSQL
+- `DB_PORT` - порт PostgreSQL (по умолчанию 5432)
+- `DB_USER` - пользователь БД
+- `DB_PASSWORD` - пароль БД
+- `DB_NAME` - имя базы данных
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Клиент
+- `REACT_APP_API_URL` - URL API (по умолчанию http://localhost:5000/api)

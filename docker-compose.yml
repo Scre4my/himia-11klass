@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: shop_postgres
+    environment:
+      POSTGRES_DB: products_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shop_network
+
+  server:
+    build: ./server
+    container_name: shop_server
+    environment:
+      PORT: 5000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: products_db
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shop_network
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: shop_client
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    networks:
+      - shop_network
+
+volumes:
+  postgres_data:
+
+networks:
+  shop_network:
+    driver: bridge
