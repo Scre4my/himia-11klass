@@ -4,6 +4,7 @@ import { ProductProvider } from './context/ProductContext';
 import Navbar from './components/Navbar';
 import Catalog from './pages/Catalog';
 import Admin from './pages/Admin';
+import Login from './pages/Login';
 import './App.css';
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<Catalog />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
         </div>

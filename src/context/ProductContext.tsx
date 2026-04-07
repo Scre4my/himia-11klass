@@ -34,16 +34,19 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/products`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(product),
       });
       
       if (!response.ok) {
-        throw new Error('Ошибка добавления товара');
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка добавления товара');
       }
 
       await fetchProducts();
@@ -55,12 +58,17 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const deleteProduct = async (id: string) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/products/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
       
       if (!response.ok) {
-        throw new Error('Ошибка удаления товара');
+        const data = await response.json();
+        throw new Error(data.error || 'Ошибка удаления товара');
       }
 
       await fetchProducts();

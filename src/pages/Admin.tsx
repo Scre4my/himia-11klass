@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import './Admin.css';
 
+const API_URL = process.env.REACT_APP_API_URL || '/api';
+
 const Admin: React.FC = () => {
   const { addProduct } = useProducts();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -15,9 +20,27 @@ const Admin: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userData = localStorage.getItem('user');
+
+    if (!token || !userData) {
+      navigate('/login');
+      return;
+    }
+
+    setUser(JSON.parse(userData));
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.price) {
       alert('Заполните обязательные поля: Название и Цена');
       return;
@@ -60,11 +83,18 @@ const Admin: React.FC = () => {
     });
   };
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="admin">
       <div className="admin-header">
-        <h1>Админ-панель</h1>
-        <p>Добавление нового товара</p>
+        <div>
+          <h1>Админ-панель</h1>
+          <p>Добавление нового товара | Пользователь: <strong>{user.username}</strong></p>
+        </div>
+        <button onClick={handleLogout} className="logout-btn">Выйти</button>
       </div>
 
       {successMessage && (
