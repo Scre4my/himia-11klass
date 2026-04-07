@@ -85,11 +85,7 @@ const Login: React.FC = () => {
           </button>
         </p>
 
-        <div className="default-creds">
-          <p><strong>Данные администратора:</strong></p>
-          <p>Логин: <code>admin</code></p>
-          <p>Пароль: <code>admin123</code></p>
-        </div>
+
       </div>
     </div>
   );
