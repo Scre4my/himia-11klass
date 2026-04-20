@@ -1,0 +1,52 @@
+.input-field {
+  margin-bottom: 16px;
+}
+
+.input-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #555;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.input-unit {
+  color: #999;
+  font-weight: 400;
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.input-field-input,
+.input-field-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s;
+}
+
+.input-field-input:focus,
+.input-field-select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.input-field.has-error .input-field-input,
+.input-field.has-error .input-field-select {
+  border-color: #f44336;
+}
+
+.input-field.has-error .input-field-input:focus,
+.input-field.has-error .input-field-select:focus {
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1);
+}
+
+.input-error {
+  display: block;
+  margin-top: 4px;
+  color: #f44336;
+  font-size: 12px;
+}

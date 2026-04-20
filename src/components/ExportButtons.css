@@ -1,0 +1,52 @@
+.export-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.export-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-btn-pdf {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+}
+
+.export-btn-pdf:hover {
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.export-btn-excel {
+  background: linear-gradient(135deg, #217346 0%, #1a5c38 100%);
+  color: white;
+}
+
+.export-btn-excel:hover {
+  background: linear-gradient(135deg, #1a5c38 0%, #0f3d22 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 115, 70, 0.3);
+}
+
+@media (max-width: 768px) {
+  .export-buttons {
+    flex-direction: column;
+  }
+
+  .export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

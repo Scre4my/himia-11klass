@@ -1,8 +1,17 @@
+/**
+ * Упрощённый сервер с in-memory базой данных
+ * Для разработки и демонстрации без PostgreSQL
+ */
+
 const express = require('express');
-const { Pool } = require('pg');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const calculationEngine = require('./calculationEngine');
+const reportGenerator = require('./reportGenerator');
+const inMemoryDB = require('./inMemoryDB');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -11,50 +20,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-i
 
 app.use(cors());
 app.use(express.json());
-
-// Защита от SQL-инъекций: валидация входных данных
-const sanitizeInput = (str) => {
-  if (typeof str !== 'string') return str;
-  // Экранирование специальных символов
-  return str.replace(/[\0\x08\x09\x1a\n\r"'\\\%]/g, (char) => {
-    switch (char) {
-      case "\0": return "\\0";
-      case "\x08": return "\\b";
-      case "\x09": return "\\t";
-      case "\x1a": return "\\z";
-      case "\n": return "\\n";
-      case "\r": return "\\r";
-      case "'": return "''";
-      case '"': return "\\\"";
-      case "\\": return "\\\\";
-      case "%": return "\\%";
-      default: return char;
-    }
-  });
-};
-
-// Валидация типов данных
-const validateProductData = (data) => {
-  const errors = [];
-
-  if (data.name && (typeof data.name !== 'string' || data.name.length > 255)) {
-    errors.push('Некорректное название товара');
-  }
-
-  if (data.description && typeof data.description !== 'string') {
-    errors.push('Некорректное описание');
-  }
-
-  if (data.price && (typeof data.price !== 'number' || data.price < 0 || data.price > 999999999)) {
-    errors.push('Некорректная цена');
-  }
-
-  if (data.category && (typeof data.category !== 'string' || data.category.length > 100)) {
-    errors.push('Некорректная категория');
-  }
-
-  return errors;
-};
 
 // Rate limiting (простой)
 const rateLimit = new Map();
@@ -79,22 +44,6 @@ const rateLimitMiddleware = (req, res, next) => {
 
 app.use(rateLimitMiddleware);
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'products_db',
-});
-
-pool.on('connect', () => {
-  console.log('✅ Подключено к PostgreSQL');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Ошибка подключения к PostgreSQL:', err);
-});
-
 // JWT Middleware для проверки авторизации
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -113,48 +62,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Инициализация БД
-const initDB = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        username VARCHAR(100) UNIQUE NOT NULL,
-        password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'user',
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS products (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        price DECIMAL(10, 2) NOT NULL,
-        image TEXT,
-        category VARCHAR(100),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    // Создаем админскую учетку если её нет
-    const adminExists = await pool.query('SELECT * FROM users WHERE username = $1', ['admin']);
-    if (adminExists.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      await pool.query(
-        'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)',
-        ['admin', hashedPassword, 'admin']
-      );
-      console.log('✅ Создана учетная запись администратора');
-    }
-
-    console.log('✅ База данных инициализирована');
-  } catch (err) {
-    console.error('❌ Ошибка инициализации БД:', err.message);
-  }
-};
-
 // === ЭНДПОИНТЫ АВТОРИЗАЦИИ ===
 
 // Регистрация
@@ -170,21 +77,16 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Логин минимум 3 символа, пароль минимум 6' });
     }
 
-    const safeUsername = sanitizeInput(username.trim());
-
-    const userExists = await pool.query('SELECT id FROM users WHERE username = $1', [safeUsername]);
-    if (userExists.rows.length > 0) {
+    const userExists = await inMemoryDB.users.findByUsername(username.trim());
+    if (userExists) {
       return res.status(400).json({ error: 'Пользователь уже существует' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [safeUsername, hashedPassword, 'user']
-    );
+    const user = await inMemoryDB.users.create(username.trim(), hashedPassword, 'user');
 
     const token = jwt.sign(
-      { id: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role },
+      { id: user.id, username: user.username, role: user.role },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -192,7 +94,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({
       message: 'Регистрация успешна',
       token,
-      user: { id: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role }
+      user: { id: user.id, username: user.username, role: user.role }
     });
   } catch (err) {
     console.error('Ошибка регистрации:', err);
@@ -209,14 +111,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Укажите логин и пароль' });
     }
 
-    const safeUsername = sanitizeInput(username.trim());
-
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [safeUsername]);
-    if (result.rows.length === 0) {
+    const user = await inMemoryDB.users.findByUsername(username.trim());
+    if (!user) {
       return res.status(401).json({ error: 'Неверный логин или пароль' });
     }
 
-    const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
       return res.status(401).json({ error: 'Неверный логин или пароль' });
@@ -242,77 +141,513 @@ app.post('/api/auth/login', async (req, res) => {
 // Проверка токена
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const user = await pool.query('SELECT id, username, role FROM users WHERE id = $1', [req.user.id]);
-    if (user.rows.length === 0) {
+    const user = await inMemoryDB.users.findById(req.user.id);
+    if (!user) {
       return res.status(404).json({ error: 'Пользователь не найден' });
     }
-    res.json({ user: user.rows[0] });
+    res.json({ user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('Ошибка получения профиля:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// === ЭНДПОИНТЫ ТОВАРОВ ===
+// === ЭНДПОИНТЫ РАСЧЁТА ВЫПАРНЫХ БАТАРЕЙ ===
 
-// Получить все товары (публичный)
+// Выполнить расчёт батареи (без сохранения)
+app.post('/api/calculate', authenticateToken, async (req, res) => {
+  try {
+    const input = req.body;
+    
+    // Валидация входных данных
+    try {
+      calculationEngine.validateInput(input);
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+    
+    // Выполнение расчёта
+    const result = calculationEngine.calculateEvaporatorBattery(input);
+    
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error('Ошибка расчёта:', err);
+    res.status(500).json({ error: 'Ошибка при выполнении расчёта' });
+  }
+});
+
+// Оптимизация количества корпусов
+app.post('/api/calculate/optimize', authenticateToken, async (req, res) => {
+  try {
+    const input = req.body;
+    
+    // Валидация
+    try {
+      calculationEngine.validateInput({ ...input, numberOfEffects: 1 });
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+    
+    // Оптимизация
+    const optimizationResult = calculationEngine.optimizeNumberOfEffects(input);
+    
+    res.json({ success: true, result: optimizationResult });
+  } catch (err) {
+    console.error('Ошибка оптимизации:', err);
+    res.status(500).json({ error: 'Ошибка при оптимизации' });
+  }
+});
+
+// Сохранить проект расчёта
+app.post('/api/calculations', authenticateToken, async (req, res) => {
+  try {
+    const { name, input, result } = req.body;
+    
+    if (!name || !input || !result) {
+      return res.status(400).json({ error: 'Название, параметры и результаты обязательны' });
+    }
+    
+    // Сохранение проекта
+    const project = await inMemoryDB.calculationProjects.create(req.user.id, {
+      name,
+      evaporatorType: input.evaporatorType,
+      flowDirection: input.flowDirection,
+      numberOfEffects: input.numberOfEffects,
+      feedFlowRate: input.feedFlowRate,
+      initialConcentration: input.initialConcentration,
+      finalConcentration: input.finalConcentration,
+      steamTemperature: input.steamTemperature,
+      heatTransferCoefficient: input.heatTransferCoefficient,
+      vaporizationHeat: input.vaporizationHeat,
+      condensationHeat: input.condensationHeat,
+      pressureLoss: input.pressureLoss || null,
+      vacuumPressure: input.vacuumPressure || null
+    });
+    
+    // Сохранение результатов по корпусам
+    for (const stage of result.stages) {
+      await inMemoryDB.calculationResults.create(project.id, {
+        stageNumber: stage.stageNumber,
+        temperature: stage.temperature,
+        pressure: stage.pressure,
+        feedFlowRate: stage.feedFlowRate,
+        evaporatedWater: stage.evaporatedWater,
+        concentrationIn: stage.concentrationIn,
+        concentrationOut: stage.concentrationOut,
+        steamConsumption: stage.steamConsumption,
+        heatExchangeArea: stage.heatExchangeArea,
+        heatLoad: stage.heatLoad
+      });
+    }
+    
+    res.status(201).json({
+      success: true,
+      projectId: project.id,
+      message: 'Проект сохранён'
+    });
+  } catch (err) {
+    console.error('Ошибка сохранения проекта:', err);
+    res.status(500).json({ error: 'Ошибка при сохранении проекта' });
+  }
+});
+
+// Получить все проекты пользователя
+app.get('/api/calculations', authenticateToken, async (req, res) => {
+  try {
+    const projects = await inMemoryDB.calculationProjects.findAllByUser(req.user.id);
+    
+    // Добавляем количество этапов к каждому проекту
+    const calculations = await Promise.all(projects.map(async (project) => {
+      const stagesCount = await inMemoryDB.calculationResults.countByProjectId(project.id);
+      return {
+        ...project,
+        stages_count: stagesCount
+      };
+    }));
+    
+    res.json({ success: true, calculations });
+  } catch (err) {
+    console.error('Ошибка получения проектов:', err);
+    res.status(500).json({ error: 'Ошибка при получении проектов' });
+  }
+});
+
+// Получить проект по ID
+app.get('/api/calculations/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Получение проекта
+    const project = await inMemoryDB.calculationProjects.findById(id, req.user.id);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Проект не найден' });
+    }
+    
+    // Получение результатов по корпусам
+    const stages = await inMemoryDB.calculationResults.findByProjectId(id);
+    
+    const input = {
+      evaporatorType: project.evaporator_type,
+      flowDirection: project.flow_direction,
+      numberOfEffects: project.number_of_effects,
+      feedFlowRate: parseFloat(project.feed_flow_rate),
+      initialConcentration: parseFloat(project.initial_concentration),
+      finalConcentration: parseFloat(project.final_concentration),
+      steamTemperature: parseFloat(project.steam_temperature),
+      heatTransferCoefficient: parseFloat(project.heat_transfer_coefficient),
+      vaporizationHeat: parseFloat(project.vaporization_heat),
+      condensationHeat: parseFloat(project.condensation_heat),
+      pressureLoss: project.pressure_loss ? parseFloat(project.pressure_loss) : undefined,
+      vacuumPressure: project.vacuum_pressure ? parseFloat(project.vacuum_pressure) : undefined
+    };
+    
+    const stageResults = stages.map(row => ({
+      stageNumber: row.stage_number,
+      temperature: parseFloat(row.temperature),
+      pressure: parseFloat(row.pressure),
+      feedFlowRate: parseFloat(row.feed_flow_rate),
+      evaporatedWater: parseFloat(row.evaporated_water),
+      concentrationIn: parseFloat(row.concentration_in),
+      concentrationOut: parseFloat(row.concentration_out),
+      steamConsumption: parseFloat(row.steam_consumption),
+      heatExchangeArea: parseFloat(row.heat_exchange_area),
+      heatLoad: parseFloat(row.heat_load)
+    }));
+    
+    // Расчёт сводных данных
+    const totalEvaporatedWater = stageResults.reduce((sum, s) => sum + s.evaporatedWater, 0);
+    const totalSteamConsumption = stageResults.reduce((sum, s) => sum + s.steamConsumption, 0);
+    const totalHeatExchangeArea = stageResults.reduce((sum, s) => sum + s.heatExchangeArea, 0);
+    
+    res.json({
+      success: true,
+      calculation: {
+        id: project.id,
+        name: project.name,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        input,
+        stages: stageResults,
+        totalEvaporatedWater,
+        totalSteamConsumption,
+        steamEconomy: totalEvaporatedWater / totalSteamConsumption,
+        totalHeatExchangeArea,
+        averageHeatExchangeArea: totalHeatExchangeArea / stageResults.length
+      }
+    });
+  } catch (err) {
+    console.error('Ошибка получения проекта:', err);
+    res.status(500).json({ error: 'Ошибка при получении проекта' });
+  }
+});
+
+// Удалить проект
+app.delete('/api/calculations/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await inMemoryDB.calculationProjects.delete(id, req.user.id);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Проект не найден' });
+    }
+    
+    res.json({ success: true, message: 'Проект удалён' });
+  } catch (err) {
+    console.error('Ошибка удаления проекта:', err);
+    res.status(500).json({ error: 'Ошибка при удалении проекта' });
+  }
+});
+
+// Экспорт в PDF
+app.get('/api/calculations/:id/export/pdf', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Получение проекта
+    const project = await inMemoryDB.calculationProjects.findById(id, req.user.id);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Проект не найден' });
+    }
+    
+    // Получение результатов по корпусам
+    const stages = await inMemoryDB.calculationResults.findByProjectId(id);
+    
+    const input = {
+      evaporatorType: project.evaporator_type,
+      flowDirection: project.flow_direction,
+      numberOfEffects: project.number_of_effects,
+      feedFlowRate: parseFloat(project.feed_flow_rate),
+      initialConcentration: parseFloat(project.initial_concentration),
+      finalConcentration: parseFloat(project.final_concentration),
+      steamTemperature: parseFloat(project.steam_temperature),
+      heatTransferCoefficient: parseFloat(project.heat_transfer_coefficient),
+      vaporizationHeat: parseFloat(project.vaporization_heat),
+      condensationHeat: parseFloat(project.condensation_heat),
+      pressureLoss: project.pressure_loss ? parseFloat(project.pressure_loss) : undefined,
+      vacuumPressure: project.vacuum_pressure ? parseFloat(project.vacuum_pressure) : undefined
+    };
+    
+    const stageResults = stages.map(row => ({
+      stageNumber: row.stage_number,
+      temperature: parseFloat(row.temperature),
+      pressure: parseFloat(row.pressure),
+      feedFlowRate: parseFloat(row.feed_flow_rate),
+      evaporatedWater: parseFloat(row.evaporated_water),
+      concentrationIn: parseFloat(row.concentration_in),
+      concentrationOut: parseFloat(row.concentration_out),
+      steamConsumption: parseFloat(row.steam_consumption),
+      heatExchangeArea: parseFloat(row.heat_exchange_area),
+      heatLoad: parseFloat(row.heat_load)
+    }));
+    
+    // Расчёт сводных данных
+    const totalEvaporatedWater = stageResults.reduce((sum, s) => sum + s.evaporatedWater, 0);
+    const totalSteamConsumption = stageResults.reduce((sum, s) => sum + s.steamConsumption, 0);
+    const totalHeatExchangeArea = stageResults.reduce((sum, s) => sum + s.heatExchangeArea, 0);
+    
+    const calculationData = {
+      input,
+      stages: stageResults,
+      totalEvaporatedWater,
+      totalSteamConsumption,
+      steamEconomy: totalEvaporatedWater / totalSteamConsumption,
+      totalHeatExchangeArea,
+      averageHeatExchangeArea: totalHeatExchangeArea / stageResults.length
+    };
+    
+    // Генерация PDF
+    const tempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
+    }
+    
+    const fileName = `report_${id}_${Date.now()}.pdf`;
+    const outputPath = path.join(tempDir, fileName);
+    
+    await reportGenerator.generatePDFReport(calculationData, outputPath);
+    
+    // Отправка файла
+    res.download(outputPath, fileName, (err) => {
+      if (!err) {
+        // Удаление временного файла после отправки
+        fs.unlinkSync(outputPath);
+      }
+    });
+  } catch (err) {
+    console.error('Ошибка экспорта в PDF:', err);
+    res.status(500).json({ error: 'Ошибка при экспорте в PDF' });
+  }
+});
+
+// Экспорт в Excel
+app.get('/api/calculations/:id/export/excel', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Получение проекта
+    const project = await inMemoryDB.calculationProjects.findById(id, req.user.id);
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Проект не найден' });
+    }
+    
+    // Получение результатов по корпусам
+    const stages = await inMemoryDB.calculationResults.findByProjectId(id);
+    
+    const input = {
+      evaporatorType: project.evaporator_type,
+      flowDirection: project.flow_direction,
+      numberOfEffects: project.number_of_effects,
+      feedFlowRate: parseFloat(project.feed_flow_rate),
+      initialConcentration: parseFloat(project.initial_concentration),
+      finalConcentration: parseFloat(project.final_concentration),
+      steamTemperature: parseFloat(project.steam_temperature),
+      heatTransferCoefficient: parseFloat(project.heat_transfer_coefficient),
+      vaporizationHeat: parseFloat(project.vaporization_heat),
+      condensationHeat: parseFloat(project.condensation_heat),
+      pressureLoss: project.pressure_loss ? parseFloat(project.pressure_loss) : undefined,
+      vacuumPressure: project.vacuum_pressure ? parseFloat(project.vacuum_pressure) : undefined
+    };
+    
+    const stageResults = stages.map(row => ({
+      stageNumber: row.stage_number,
+      temperature: parseFloat(row.temperature),
+      pressure: parseFloat(row.pressure),
+      feedFlowRate: parseFloat(row.feed_flow_rate),
+      evaporatedWater: parseFloat(row.evaporated_water),
+      concentrationIn: parseFloat(row.concentration_in),
+      concentrationOut: parseFloat(row.concentration_out),
+      steamConsumption: parseFloat(row.steam_consumption),
+      heatExchangeArea: parseFloat(row.heat_exchange_area),
+      heatLoad: parseFloat(row.heat_load)
+    }));
+    
+    // Расчёт сводных данных
+    const totalEvaporatedWater = stageResults.reduce((sum, s) => sum + s.evaporatedWater, 0);
+    const totalSteamConsumption = stageResults.reduce((sum, s) => sum + s.steamConsumption, 0);
+    const totalHeatExchangeArea = stageResults.reduce((sum, s) => sum + s.heatExchangeArea, 0);
+    
+    const calculationData = {
+      input,
+      stages: stageResults,
+      totalEvaporatedWater,
+      totalSteamConsumption,
+      steamEconomy: totalEvaporatedWater / totalSteamConsumption,
+      totalHeatExchangeArea,
+      averageHeatExchangeArea: totalHeatExchangeArea / stageResults.length
+    };
+    
+    // Генерация Excel
+    const tempDir = path.join(__dirname, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
+    }
+    
+    const fileName = `report_${id}_${Date.now()}.xlsx`;
+    const outputPath = path.join(tempDir, fileName);
+    
+    reportGenerator.generateExcelReport(calculationData, outputPath);
+    
+    // Отправка файла
+    res.download(outputPath, fileName, (err) => {
+      if (!err) {
+        // Удаление временного файла после отправки
+        fs.unlinkSync(outputPath);
+      }
+    });
+  } catch (err) {
+    console.error('Ошибка экспорта в Excel:', err);
+    res.status(500).json({ error: 'Ошибка при экспорте в Excel' });
+  }
+});
+
+// === ЭНДПОИНТЫ СПРАВОЧНЫХ ТАБЛИЦ ===
+
+// Переименовать группу
+app.put('/api/reference/tables/group/:groupId/name', authenticateToken, async (req, res) => {
+  try {
+    const { group_name } = req.body;
+    if (!group_name) return res.status(400).json({ error: 'group_name обязателен' });
+    await inMemoryDB.referenceTables.renameGroup(req.params.groupId, req.user.id, group_name);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка переименования группы' });
+  }
+});
+
+// Batch-импорт (все листы из одного файла)
+app.post('/api/reference/tables/batch', authenticateToken, async (req, res) => {
+  try {
+    const { group_id, group_name, tables } = req.body;
+    if (!group_id || !Array.isArray(tables) || tables.length === 0) {
+      return res.status(400).json({ error: 'group_id и tables обязательны' });
+    }
+    const created = await inMemoryDB.referenceTables.createBatch(req.user.id, group_id, group_name || '', tables);
+    res.status(201).json({ success: true, tables: created });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка batch-импорта' });
+  }
+});
+
+// Сохранить таблицу
+app.post('/api/reference/tables', authenticateToken, async (req, res) => {
+  try {
+    const { name, headers, rows } = req.body;
+    if (!name || !headers || !rows) {
+      return res.status(400).json({ error: 'name, headers и rows обязательны' });
+    }
+    const table = await inMemoryDB.referenceTables.create(req.user.id, { name, headers, rows });
+    res.status(201).json({ success: true, table });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сохранения таблицы' });
+  }
+});
+
+// Получить все таблицы пользователя
+app.get('/api/reference/tables', authenticateToken, async (req, res) => {
+  try {
+    const tables = await inMemoryDB.referenceTables.findAll(req.user.id);
+    res.json({ success: true, tables });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения таблиц' });
+  }
+});
+
+// Получить таблицу по ID
+app.get('/api/reference/tables/:id', authenticateToken, async (req, res) => {
+  try {
+    const table = await inMemoryDB.referenceTables.findById(req.params.id, req.user.id);
+    if (!table) return res.status(404).json({ error: 'Таблица не найдена' });
+    res.json({ success: true, table });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка получения таблицы' });
+  }
+});
+
+// Обновить таблицу (после ручного редактирования)
+app.put('/api/reference/tables/:id', authenticateToken, async (req, res) => {
+  try {
+    const { name, headers, rows } = req.body;
+    const table = await inMemoryDB.referenceTables.update(req.params.id, req.user.id, { name, headers, rows });
+    if (!table) return res.status(404).json({ error: 'Таблица не найдена' });
+    res.json({ success: true, table });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка обновления таблицы' });
+  }
+});
+
+// Удалить таблицу
+app.delete('/api/reference/tables/:id', authenticateToken, async (req, res) => {
+  try {
+    const result = await inMemoryDB.referenceTables.delete(req.params.id, req.user.id);
+    if (!result) return res.status(404).json({ error: 'Таблица не найдена' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка удаления таблицы' });
+  }
+});
+
+// === ЭНДПОИНТЫ ПРОДУКТОВ ===
+
+// Получить все продукты (публичный)
 app.get('/api/products', async (req, res) => {
   try {
     const { category, search } = req.query;
-    let query = 'SELECT * FROM products';
-    const params = [];
-    const conditions = [];
-
-    if (category) {
-      const safeCategory = sanitizeInput(category);
-      conditions.push(`category = $${params.length + 1}`);
-      params.push(safeCategory);
-    }
-
-    if (search) {
-      const safeSearch = sanitizeInput(search);
-      conditions.push(`(name ILIKE $${params.length + 1} OR description ILIKE $${params.length + 1})`);
-      params.push(`%${safeSearch}%`);
-    }
-
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
-
-    query += ' ORDER BY created_at DESC';
-
-    const result = await pool.query(query, params);
-    res.json(result.rows);
+    
+    const filters = {};
+    if (category) filters.category = category;
+    if (search) filters.search = search;
+    
+    const result = await inMemoryDB.products.findAll(filters);
+    res.json(result);
   } catch (err) {
-    console.error('Ошибка получения товаров:', err);
+    console.error('Ошибка получения продуктов:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Получить товар по ID (публичный)
+// Получить продукт по ID (публичный)
 app.get('/api/products/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Валидация UUID
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      return res.status(400).json({ error: 'Некорректный ID товара' });
+    
+    const result = await inMemoryDB.products.findById(id);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Продукт не найден' });
     }
-
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Товар не найден' });
-    }
-
-    res.json(result.rows[0]);
+    
+    res.json(result);
   } catch (err) {
-    console.error('Ошибка получения товара:', err);
+    console.error('Ошибка получения продукта:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Создать товар (только админ)
+// Создать продукт (только админ)
 app.post('/api/products', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -320,37 +655,27 @@ app.post('/api/products', authenticateToken, async (req, res) => {
     }
 
     const { name, description, price, image, category } = req.body;
-
-    // Валидация
-    const errors = validateProductData({ name, description, price, category });
-    if (errors.length > 0) {
-      return res.status(400).json({ error: errors.join(', ') });
-    }
-
+    
     if (!name || price === undefined) {
       return res.status(400).json({ error: 'Название и цена обязательны' });
     }
 
-    const safeName = sanitizeInput(name.trim());
-    const safeDescription = sanitizeInput(description?.trim() || '');
-    const safeImage = sanitizeInput(image?.trim() || '');
-    const safeCategory = sanitizeInput(category?.trim() || '');
+    const result = await inMemoryDB.products.create({
+      name: name.trim(),
+      description: description?.trim() || '',
+      price,
+      image: image?.trim() || '',
+      category: category?.trim() || ''
+    });
 
-    const result = await pool.query(
-      `INSERT INTO products (name, description, price, image, category)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [safeName, safeDescription, price, safeImage, safeCategory]
-    );
-
-    res.status(201).json(result.rows[0]);
+    res.status(201).json(result);
   } catch (err) {
-    console.error('Ошибка создания товара:', err);
+    console.error('Ошибка создания продукта:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Обновить товар (только админ)
+// Обновить продукт (только админ)
 app.put('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -358,49 +683,29 @@ app.put('/api/products/:id', authenticateToken, async (req, res) => {
     }
 
     const { id } = req.params;
-
-    // Валидация UUID
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      return res.status(400).json({ error: 'Некорректный ID товара' });
-    }
-
     const { name, description, price, image, category } = req.body;
 
-    const errors = validateProductData({ name, description, price, category });
-    if (errors.length > 0) {
-      return res.status(400).json({ error: errors.join(', ') });
+    const existing = await inMemoryDB.products.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Продукт не найден' });
     }
 
-    const existing = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
-    if (existing.rows.length === 0) {
-      return res.status(404).json({ error: 'Товар не найден' });
-    }
+    const result = await inMemoryDB.products.update(id, {
+      name: name ? name.trim() : existing.name,
+      description: description ? description.trim() : existing.description,
+      price: price !== undefined ? price : existing.price,
+      image: image ? image.trim() : existing.image,
+      category: category ? category.trim() : existing.category
+    });
 
-    const safeName = name ? sanitizeInput(name.trim()) : null;
-    const safeDescription = description ? sanitizeInput(description.trim()) : null;
-    const safeImage = image ? sanitizeInput(image.trim()) : null;
-    const safeCategory = category ? sanitizeInput(category.trim()) : null;
-
-    const result = await pool.query(
-      `UPDATE products
-       SET name = COALESCE($1, name),
-           description = COALESCE($2, description),
-           price = COALESCE($3, price),
-           image = COALESCE($4, image),
-           category = COALESCE($5, category)
-       WHERE id = $6
-       RETURNING *`,
-      [safeName, safeDescription, price, safeImage, safeCategory, id]
-    );
-
-    res.json(result.rows[0]);
+    res.json(result);
   } catch (err) {
-    console.error('Ошибка обновления товара:', err);
+    console.error('Ошибка обновления продукта:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// Удалить товар (только админ)
+// Удалить продукт (только админ)
 app.delete('/api/products/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -408,26 +713,24 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
     }
 
     const { id } = req.params;
+    
+    const result = await inMemoryDB.products.delete(id);
 
-    // Валидация UUID
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-      return res.status(400).json({ error: 'Некорректный ID товара' });
+    if (!result) {
+      return res.status(404).json({ error: 'Продукт не найден' });
     }
 
-    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Товар не найден' });
-    }
-
-    res.json({ message: 'Товар удален', product: result.rows[0] });
+    res.json({ message: 'Продукт удален', product: result });
   } catch (err) {
-    console.error('Ошибка удаления товара:', err);
+    console.error('Ошибка удаления продукта:', err);
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
+// Запуск сервера
 app.listen(PORT, async () => {
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
-  await initDB();
+  console.log(`📍 API доступен по адресу: http://localhost:${PORT}`);
+  await inMemoryDB.initDB();
+  console.log('✅ Сервер готов к работе');
 });

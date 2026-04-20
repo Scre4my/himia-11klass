@@ -1,0 +1,46 @@
+.charts-container {
+  margin: 24px 0;
+}
+
+.charts-container h3 {
+  color: #1976d2;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.chart-card h4 {
+  color: #333;
+  margin-bottom: 16px;
+  font-size: 15px;
+  text-align: center;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-card {
+    padding: 12px;
+  }
+
+  .chart-card h4 {
+    font-size: 14px;
+  }
+}
