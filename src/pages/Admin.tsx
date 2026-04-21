@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
 import './Admin.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL as _BASE_URL } from '../config';
+const API_URL = _BASE_URL + '/api';
 
 const Admin: React.FC = () => {
   const { addProduct } = useProducts();

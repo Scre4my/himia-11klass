@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Login.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL as _BASE_URL } from '../config';
+const API_URL = _BASE_URL + '/api';
 
 const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);

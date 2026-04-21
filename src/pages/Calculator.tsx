@@ -7,7 +7,7 @@ import Charts from '../components/Charts';
 import ExportButtons from '../components/ExportButtons';
 import './Calculator.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import { API_URL } from '../config';
 
 // Значения по умолчанию (пример из методики Дытнерского)
 const defaultFormData: CalculationInput = {

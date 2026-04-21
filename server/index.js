@@ -728,9 +728,13 @@ app.delete('/api/products/:id', authenticateToken, async (req, res) => {
 });
 
 // Запуск сервера
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
+  const os = require('os');
+  const lanIP = Object.values(os.networkInterfaces())
+    .flat().find(i => i.family === 'IPv4' && !i.internal)?.address || 'unknown';
   console.log(`🚀 Сервер запущен на порту ${PORT}`);
-  console.log(`📍 API доступен по адресу: http://localhost:${PORT}`);
+  console.log(`📍 Локально:  http://localhost:${PORT}`);
+  console.log(`🌐 В сети:    http://${lanIP}:${PORT}`);
   await inMemoryDB.initDB();
   console.log('✅ Сервер готов к работе');
 });

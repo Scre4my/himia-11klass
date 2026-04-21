@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product } from '../types/Product';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_URL as _BASE_URL } from '../config';
+const API_URL = _BASE_URL + '/api';
 
 interface ProductContextType {
   products: Product[];
