@@ -325,7 +325,7 @@ const Calculator: React.FC = () => {
           <fieldset className="param-group">
             <legend>Параметры по корпусам</legend>
 
-            <table className="per-body-table">
+            <div className="per-body-table-wrap"><table className="per-body-table">
               <thead>
                 <tr>
                   <th>Корпус</th>
@@ -362,7 +362,7 @@ const Calculator: React.FC = () => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </fieldset>
 
           <div className="button-group">

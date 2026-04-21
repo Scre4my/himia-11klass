@@ -33,6 +33,12 @@ const Navbar: React.FC = () => {
             Калькулятор
           </Link>
           <Link
+            to="/projects"
+            className={location.pathname === '/projects' ? 'nav-link active' : 'nav-link'}
+          >
+            Проекты
+          </Link>
+          <Link
             to="/reference"
             className={location.pathname === '/reference' ? 'nav-link active' : 'nav-link'}
           >

@@ -7,6 +7,7 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Calculator from './pages/Calculator';
 import ReferenceData from './pages/ReferenceData';
+import SavedProjects from './pages/SavedProjects';
 import './App.css';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Catalog />} />
             <Route path="/calculator" element={<Calculator />} />
+            <Route path="/projects" element={<SavedProjects />} />
             <Route path="/reference" element={<ReferenceData />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<Admin />} />
