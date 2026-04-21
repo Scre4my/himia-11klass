@@ -15,6 +15,20 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Все таблицы скроллятся горизонтально, не растягивают страницу */
+table {
+  max-width: 100%;
+}
+
+.table-scroll,
+.tbl-scroll,
+.sp-table-wrap,
+.per-body-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 code {

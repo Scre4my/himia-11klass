@@ -6,11 +6,20 @@ import logo from "../misc/logo.png"
 const Navbar: React.FC = () => {
   const location = useLocation();
   const [isAuth, setIsAuth] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsAuth(!!token);
   }, [location]);
+
+  useEffect(() => { setMenuOpen(false); }, [location]);
+
+  const link = (to: string, label: string) => (
+    <Link to={to} className={location.pathname === to ? 'nav-link active' : 'nav-link'}>
+      {label}
+    </Link>
+  );
 
   return (
     <nav className="navbar">
@@ -19,46 +28,17 @@ const Navbar: React.FC = () => {
           <img src={logo} alt="" />
           ТехноПар
         </Link>
-        <div className="navbar-links">
-          <Link
-            to="/"
-            className={location.pathname === '/' ? 'nav-link active' : 'nav-link'}
-          >
-            Каталог
-          </Link>
-          <Link
-            to="/calculator"
-            className={location.pathname === '/calculator' ? 'nav-link active' : 'nav-link'}
-          >
-            Калькулятор
-          </Link>
-          <Link
-            to="/projects"
-            className={location.pathname === '/projects' ? 'nav-link active' : 'nav-link'}
-          >
-            Проекты
-          </Link>
-          <Link
-            to="/reference"
-            className={location.pathname === '/reference' ? 'nav-link active' : 'nav-link'}
-          >
-            Справочник
-          </Link>
-          {isAuth ? (
-            <Link
-              to="/admin"
-              className={location.pathname === '/admin' ? 'nav-link active' : 'nav-link'}
-            >
-              Админка
-            </Link>
-          ) : (
-            <Link
-              to="/login"
-              className={location.pathname === '/login' ? 'nav-link active' : 'nav-link'}
-            >
-              Вход
-            </Link>
-          )}
+
+        <button className={`nav-burger ${menuOpen ? 'nav-burger--open' : ''}`} onClick={() => setMenuOpen(o => !o)} aria-label="Меню">
+          <span /><span /><span />
+        </button>
+
+        <div className={`navbar-links ${menuOpen ? 'navbar-links--open' : ''}`}>
+          {link('/', 'Каталог')}
+          {link('/calculator', 'Калькулятор')}
+          {link('/projects', 'Проекты')}
+          {link('/reference', 'Справочник')}
+          {isAuth ? link('/admin', 'Админка') : link('/login', 'Вход')}
         </div>
       </div>
     </nav>
