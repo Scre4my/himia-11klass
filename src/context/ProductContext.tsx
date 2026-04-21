@@ -21,9 +21,10 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const response = await fetch(`${API_URL}/products`);
       const data = await response.json();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Ошибка загрузки товаров:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
