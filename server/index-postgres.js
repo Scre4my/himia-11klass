@@ -124,16 +124,30 @@ const initDB = async () => {
         feed_flow_rate NUMERIC(12,3) NOT NULL,
         initial_concentration NUMERIC(5,2) NOT NULL,
         final_concentration NUMERIC(5,2) NOT NULL,
-        steam_temperature NUMERIC(6,2) NOT NULL,
-        heat_transfer_coefficient NUMERIC(8,2) NOT NULL,
-        vaporization_heat NUMERIC(8,2) NOT NULL,
-        condensation_heat NUMERIC(8,2) NOT NULL,
+        steam_temperature NUMERIC(6,2),
+        heat_transfer_coefficient NUMERIC(8,2),
+        vaporization_heat NUMERIC(8,2),
+        condensation_heat NUMERIC(8,2),
         pressure_loss NUMERIC(8,4),
         vacuum_pressure NUMERIC(8,4),
+        input_json JSONB,
+        result_json JSONB,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    await pool.query(`
+      ALTER TABLE calculation_projects
+        ALTER COLUMN steam_temperature DROP NOT NULL,
+        ALTER COLUMN heat_transfer_coefficient DROP NOT NULL,
+        ALTER COLUMN vaporization_heat DROP NOT NULL,
+        ALTER COLUMN condensation_heat DROP NOT NULL;
+    `).catch(() => {});
+    await pool.query(`
+      ALTER TABLE calculation_projects
+        ADD COLUMN IF NOT EXISTS input_json JSONB,
+        ADD COLUMN IF NOT EXISTS result_json JSONB;
+    `).catch(() => {});
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS calculation_results (
@@ -289,16 +303,13 @@ app.post('/api/calculations', authenticateToken, async (req, res) => {
 
     const proj = await client.query(
       `INSERT INTO calculation_projects
-         (user_id,name,evaporator_type,flow_direction,number_of_effects,
-          feed_flow_rate,initial_concentration,final_concentration,
-          steam_temperature,heat_transfer_coefficient,vaporization_heat,
-          condensation_heat,pressure_loss,vacuum_pressure)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+         (user_id, name, evaporator_type, flow_direction, number_of_effects,
+          feed_flow_rate, initial_concentration, final_concentration,
+          input_json, result_json)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [req.user.id, name, input.evaporatorType, input.flowDirection,
        input.numberOfEffects, input.feedFlowRate, input.initialConcentration,
-       input.finalConcentration, input.steamTemperature, input.heatTransferCoefficient,
-       input.vaporizationHeat, input.condensationHeat,
-       input.pressureLoss || null, input.vacuumPressure || null]
+       input.finalConcentration, JSON.stringify(input), JSON.stringify(result)]
     );
 
     for (const s of result.stages) {
@@ -342,20 +353,20 @@ app.get('/api/calculations', authenticateToken, async (req, res) => {
 });
 
 const buildCalculation = (project, stages) => {
-  const input = {
+  const input = project.input_json || {
     evaporatorType: project.evaporator_type,
     flowDirection: project.flow_direction,
     numberOfEffects: project.number_of_effects,
     feedFlowRate: parseFloat(project.feed_flow_rate),
     initialConcentration: parseFloat(project.initial_concentration),
     finalConcentration: parseFloat(project.final_concentration),
-    steamTemperature: parseFloat(project.steam_temperature),
-    heatTransferCoefficient: parseFloat(project.heat_transfer_coefficient),
-    vaporizationHeat: parseFloat(project.vaporization_heat),
-    condensationHeat: parseFloat(project.condensation_heat),
-    pressureLoss: project.pressure_loss ? parseFloat(project.pressure_loss) : undefined,
-    vacuumPressure: project.vacuum_pressure ? parseFloat(project.vacuum_pressure) : undefined
+    steamTemperature: project.steam_temperature ? parseFloat(project.steam_temperature) : undefined,
+    heatTransferCoefficient: project.heat_transfer_coefficient ? parseFloat(project.heat_transfer_coefficient) : undefined,
   };
+  const resultJson = project.result_json;
+  if (resultJson) {
+    return { id: project.id, name: project.name, createdAt: project.created_at, updatedAt: project.updated_at, ...resultJson, input };
+  }
   const st = stages.map(r => ({
     stageNumber: r.stage_number,
     temperature: parseFloat(r.temperature),
