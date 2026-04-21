@@ -272,12 +272,14 @@
   background: white;
   border-bottom: 1px solid #e0e0e0;
 }
-
+.overflow-auto{
+  overflow: auto;
+}
 /* ── Responsive design ── */
 /* Responsive design */
 @media (max-width: 1024px) {
   .calculator-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 100%;
   }
 
   .input-panel,

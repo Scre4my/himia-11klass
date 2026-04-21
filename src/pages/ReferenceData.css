@@ -841,3 +841,9 @@
   color: var(--text-muted);
   font-size: 13px;
 }
+@media (max-width:900px) {
+  .ref-header-actions{
+    flex-direction: column;
+  }
+  
+}
