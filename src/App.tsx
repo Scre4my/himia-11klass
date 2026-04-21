@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Calculator from './pages/Calculator';
 import ReferenceData from './pages/ReferenceData';
 import SavedProjects from './pages/SavedProjects';
+import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
 function App() {
@@ -18,11 +19,11 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<Catalog />} />
-            <Route path="/calculator" element={<Calculator />} />
-            <Route path="/projects" element={<SavedProjects />} />
-            <Route path="/reference" element={<ReferenceData />} />
+            <Route path="/calculator" element={<ProtectedRoute><Calculator /></ProtectedRoute>} />
+            <Route path="/projects" element={<ProtectedRoute><SavedProjects /></ProtectedRoute>} />
+            <Route path="/reference" element={<ProtectedRoute><ReferenceData /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           </Routes>
         </div>
       </Router>
