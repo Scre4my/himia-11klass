@@ -205,7 +205,7 @@ const Calculator: React.FC = () => {
         {/* ────────── ПАНЕЛЬ ВВОДА ────────── */}
         <div className="input-panel">
           <h2>Входные параметры</h2>
-          <div className='overflow-auto'>
+          
 
           
           {/* ─── Основные параметры ─── */}
@@ -241,7 +241,7 @@ const Calculator: React.FC = () => {
               />
             </div>
           </fieldset>
-          </div>
+          
           {/* ─── Материальный баланс ─── */}
           <fieldset className="param-group">
             <legend>Материальный баланс</legend>
@@ -324,6 +324,7 @@ const Calculator: React.FC = () => {
           </fieldset>
 
           {/* ─── Параметры по корпусам ─── */}
+          <div className='overflow-auto'>
           <fieldset className="param-group">
             <legend>Параметры по корпусам</legend>
 
@@ -366,7 +367,7 @@ const Calculator: React.FC = () => {
               </tbody>
             </table></div>
           </fieldset>
-
+           </div>     
           <div className="button-group">
             <button className="btn-primary" onClick={handleCalculate} disabled={loading}>
               {loading ? 'Расчёт...' : 'Рассчитать'}
