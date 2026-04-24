@@ -7,6 +7,12 @@ import Charts from '../components/Charts';
 import ExportButtons from '../components/ExportButtons';
 import './Calculator.css';
 import { EVAPORATOR_INSTALLATIONS, getInstallationByValue } from '../data/evaporatorInstallations';
+import {
+  SOLUTION_PROPERTIES,
+  estimateBodyConcentrations,
+  getSolutionAtmosphericDepression,
+  getSolutionDensity,
+} from '../data/solutionProperties';
 
 import { API_URL } from '../config';
 
@@ -14,6 +20,7 @@ import { API_URL } from '../config';
 const defaultFormData: CalculationInput = {
   evaporatorType: 'type-1-natural-circulation',
   evaporatorExecution: 'type-1-execution-1',
+  solutionName: 'NaOH',
   flowDirection: 'direct',
   numberOfEffects: 3,
   feedFlowRate: 10000,
@@ -24,12 +31,12 @@ const defaultFormData: CalculationInput = {
   condenserPressure: 0.0147,     // МПа (~55°C)
 
   heatTransferCoefficients: [2000, 1800, 1600],
-  solutionDensities: [1100, 1150, 1200],
+  solutionDensities: [1144.3, 1222.7, 1525],
   solutionHeatCapacities: [3.8, 3.6, 3.4],
-  atmosphericDepressions: [1.5, 2.0, 3.0],
+  atmosphericDepressions: [5.63, 8.52, 42.2],
 
   feedHeatCapacity: 3.9,
-  feedAtmosphericDepression: 1.0,
+  feedAtmosphericDepression: 2.8,
 
   tubeHeight: 4.0,
   steamFraction: 0.5,
@@ -48,9 +55,35 @@ const Calculator: React.FC = () => {
 
   const [formData, setFormData] = useState<CalculationInput>(defaultFormData);
 
+  const applySolutionProperties = (data: CalculationInput): CalculationInput => {
+    const concentrations = estimateBodyConcentrations(
+      data.feedFlowRate,
+      data.initialConcentration,
+      data.finalConcentration,
+      data.numberOfEffects,
+    );
+
+    return {
+      ...data,
+      solutionDensities: concentrations.map(concentration =>
+        Math.round(getSolutionDensity(data.solutionName, concentration) * 10) / 10
+      ),
+      atmosphericDepressions: concentrations.map(concentration =>
+        Math.round(getSolutionAtmosphericDepression(data.solutionName, concentration) * 100) / 100
+      ),
+      feedAtmosphericDepression: Math.round(getSolutionAtmosphericDepression(data.solutionName, data.initialConcentration) * 100) / 100,
+    };
+  };
+
   /** Обновление скалярного поля */
   const handleChange = (field: keyof CalculationInput, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next: CalculationInput = { ...prev, [field]: value };
+      if (field === 'solutionName' || field === 'feedFlowRate' || field === 'initialConcentration' || field === 'finalConcentration') {
+        return applySolutionProperties(next);
+      }
+      return next;
+    });
   };
 
   const handleEvaporatorTypeChange = (value: string) => {
@@ -80,13 +113,11 @@ const Calculator: React.FC = () => {
       while (copy.length < n) copy.push(fill);
       return copy.slice(0, n);
     };
-    setFormData(prev => ({
+    setFormData(prev => applySolutionProperties({
       ...prev,
       numberOfEffects: n,
       heatTransferCoefficients: clamp(prev.heatTransferCoefficients, 1800),
-      solutionDensities:        clamp(prev.solutionDensities, 1100),
       solutionHeatCapacities:   clamp(prev.solutionHeatCapacities, 3.8),
-      atmosphericDepressions:   clamp(prev.atmosphericDepressions, 1.5),
     }));
   };
 
@@ -272,6 +303,16 @@ const Calculator: React.FC = () => {
           {/* ─── Материальный баланс ─── */}
           <fieldset className="param-group">
             <legend>Материальный баланс</legend>
+
+            <div className="form-group">
+              <label>Упариваемый раствор:</label>
+              <select value={formData.solutionName ?? ''} onChange={e => handleChange('solutionName', e.target.value)}>
+                {SOLUTION_PROPERTIES.map(item => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </select>
+              <small className="field-hint">Плотность берётся из приложения 4.3, температурная депрессия - из приложения 4.5.</small>
+            </div>
 
             <div className="form-group">
               <label>Расход исходного раствора G<sub>н</sub>, кг/ч:</label>

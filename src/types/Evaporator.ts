@@ -16,6 +16,7 @@ export type FlowDirection = 'direct' | 'counter' | 'mixed';
 export interface CalculationInput {
   evaporatorType: EvaporatorType;
   evaporatorExecution?: string;
+  solutionName?: string;
   flowDirection: FlowDirection;
   numberOfEffects: number;              // количество корпусов (1-10)
   feedFlowRate: number;                 // Gн - расход исходного раствора, кг/ч

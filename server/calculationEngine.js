@@ -141,8 +141,8 @@ function concentrationsByMaterialBalance(Gn, xn, w_arr) {
   const x = [];
   let cumW = 0;
   for (let i = 0; i < w_arr.length; i++) {
-    x.push((Gn * xn) / (Gn - cumW));
     cumW += w_arr[i];
+    x.push((Gn * xn) / (Gn - cumW));
   }
   return x;
 }
@@ -275,6 +275,7 @@ function r2(x) { return Math.round(x * 100) / 100; }
 function buildSteps(p) {
   const {
     n, Gn, xn, xk, W, P1, Pbk, dP,
+    w_dist, conc, solutionName,
     P_heat, steam_heat, steam_bk, tBK,
     t_vp, P_vp, steam_mid,
     delta_pp, delta_p, delta_atm, tk, tn,
@@ -307,6 +308,37 @@ function buildSteps(p) {
   });
 
   // Шаг 2 — Распределение давлений
+  const ratioRows = [];
+  const ratios = Array.from({ length: n }, (_, i) => 1 + i * 0.1);
+  const ratioSum = ratios.reduce((a, b) => a + b, 0);
+  ratioRows.push({
+    label: 'Соотношение нагрузок',
+    expr: ratios.map(r => r2(r)).join(' : '),
+    result: `Сумма = ${r2(ratioSum)}`,
+  });
+  w_dist.forEach((wi, i) => {
+    ratioRows.push({
+      label: `w_${i + 1} — испарение в корпусе ${i + 1}`,
+      expr: `${r2(ratios[i])} · ${r4(W)} / ${r2(ratioSum)}`,
+      result: `${r4(wi)} кг/с = ${r2(wi * 3600)} кг/ч`,
+    });
+    ratioRows.push({
+      label: `x_${i + 1} — концентрация после корпуса ${i + 1}`,
+      expr: `${r4(Gn)} · ${r4(xn)} / (${r4(Gn)} − ${w_dist.slice(0, i + 1).map(x => r4(x)).join(' − ')})`,
+      result: `${r4(conc[i])} = ${r2(conc[i] * 100)} %`,
+    });
+  });
+  steps.push({
+    id: 'step2',
+    title: 'Шаг 2. Первое приближение нагрузок и концентраций по корпусам',
+    ref: 'Практическое соотношение w_i',
+    formula: 'w_i = k_i · W / Σk_i; x_i = G_н · x_н / (G_н − Σw_i)',
+    rows: [
+      ...(solutionName ? [{ label: 'Упариваемый раствор', expr: solutionName, result: 'Свойства берутся из справочных таблиц 4.3 и 4.5' }] : []),
+      ...ratioRows,
+    ],
+  });
+
   const pressureRows = [
     { label: 'ΔP = (P_г1 − P_бк) / n', expr: `(${r4(P1)} − ${r4(Pbk)}) / ${n}`, result: `${r4(dP)} МПа` },
   ];
@@ -315,7 +347,7 @@ function buildSteps(p) {
     pressureRows.push({
       label: `P_г${i + 1} — греющий пар корпуса ${i + 1}`,
       expr: `${r4(P1)} − ${i} · ${r4(dP)}`,
-      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  I = ${r2(s.I)} кДж/кг`,
+      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  h''(при этом давлении) = ${r2(s.I)} кДж/кг  i' = ${r2(s.I - s.r)} кДж/кг`,
     });
   });
   pressureRows.push({
@@ -323,7 +355,7 @@ function buildSteps(p) {
     expr: `${r4(Pbk)} МПа`,
     result: `T_бк = ${r2(tBK)} °C  h''(при этом давлении) = ${r2(p.steam_bk.I)} кДж/кг  i' = ${r2(p.steam_bk.I - p.steam_bk.r)} кДж/кг`,
   });
-  steps.push({ id: 'step2', title: 'Шаг 2. Распределение давлений по корпусам', ref: '', formula: 'P_гi = P_г1 − (i−1)·ΔP', rows: pressureRows });
+  steps.push({ id: 'step3', title: 'Шаг 3. Распределение давлений по корпусам', ref: '', formula: 'P_гi = P_г1 − (i−1)·ΔP', rows: pressureRows });
 
   // Шаг 3 — Вторичный пар
   const vpRows = [];
@@ -335,7 +367,7 @@ function buildSteps(p) {
       result: `${r2(tvp)} °C → P_вп = ${r4(P_vp[i])} МПа`,
     });
   });
-  steps.push({ id: 'step3', title: 'Шаг 3. Температуры и давления вторичных паров', ref: '', formula: 't_вп,i = t_г,i+1 + Δ\'\'\'', rows: vpRows });
+  steps.push({ id: 'step4', title: 'Шаг 4. Температуры и давления вторичных паров', ref: '', formula: 't_вп,i = t_г,i+1 + Δ\'\'\'', rows: vpRows });
 
   // Шаг 4 — Гидростатическая депрессия Δ''
   const dppRows = [];
@@ -348,7 +380,7 @@ function buildSteps(p) {
       result: `Δ'' = ${r2(steam_mid[i].T)} − ${r2(tvp)} = ${r2(delta_pp[i])} °C`,
     });
   });
-  steps.push({ id: 'step4', title: 'Шаг 4. Гидростатическая депрессия Δ\'\'', ref: '', formula: 'P_ср = P_вп + ρ·g·H·(1−e)/2', rows: dppRows });
+  steps.push({ id: 'step5', title: 'Шаг 5. Гидростатическая депрессия Δ\'\'', ref: '', formula: 'P_ср = P_вп + ρ·g·H·(1−e)/2', rows: dppRows });
 
   // Шаг 5 — Температурная депрессия Δ' (ф. 4.4)
   const dpRows = [];
@@ -361,7 +393,7 @@ function buildSteps(p) {
       result: `Δ' = ${r2(delta_p[i])} °C`,
     });
   });
-  steps.push({ id: 'step5', title: 'Шаг 5. Температурная депрессия Δ\'', ref: 'Формула 4.4', formula: 'Δ\' = 1,62·10⁻² · Δ\'_атм · T²_ср / r_ср', rows: dpRows });
+  steps.push({ id: 'step6', title: 'Шаг 6. Температурная депрессия Δ\'', ref: 'Формула 4.4', formula: 'Δ\' = 1,62·10⁻² · Δ\'_атм · T²_ср / r_ср', rows: dpRows });
 
   // Шаг 6 — Температуры кипения
   const tkRows = [];
@@ -374,12 +406,12 @@ function buildSteps(p) {
     });
   });
   tkRows.push({ label: 't_н — температура исходного раствора', expr: `t_вп,1 + Δ'_н = ${r2(t_vp[0])} + ${dPPPP}`, result: `${r2(tn)} °C` });
-  steps.push({ id: 'step6', title: 'Шаг 6. Температуры кипения раствора по корпусам', ref: '', formula: 't_к,i = t_г,i+1 + Δ\'_i + Δ\'\'_i + Δ\'\'\'', rows: tkRows });
+  steps.push({ id: 'step7', title: 'Шаг 7. Температуры кипения раствора по корпусам', ref: '', formula: 't_к,i = t_г,i+1 + Δ\'_i + Δ\'\'_i + Δ\'\'\'', rows: tkRows });
 
   // Шаг 7 — Суммарная полезная ΔT
   steps.push({
-    id: 'step7',
-    title: 'Шаг 7. Суммарная полезная разность температур',
+    id: 'step8',
+    title: 'Шаг 8. Суммарная полезная разность температур',
     ref: '',
     formula: 'ΣΔt_п = T_г1 − t_бк − ΣΔ\' − ΣΔ\'\' − ΣΔ\'\'\'',
     rows: [
@@ -419,7 +451,7 @@ function buildSteps(p) {
       result: `${r4(w[i])} кг/с = ${r2(w[i] * 3600)} кг/ч`,
     });
   }
-  steps.push({ id: 'step8', title: 'Шаг 8. Тепловые балансы по корпусам', ref: 'Формулы 4.8–4.11', formula: 'D·r_г1 = φ·[G_н·c_н·(t_к1−t_н) + w₁·r_вп,эфф]', rows: hbRows });
+  steps.push({ id: 'step9', title: 'Шаг 9. Тепловые балансы по корпусам', ref: 'Формулы 4.8–4.11', formula: 'D·r_г1 = φ·[G_н·c_н·(t_к1−t_н) + w₁·r_вп,эфф]', rows: hbRows });
 
   // Шаг 9 — Перераспределение ΔT (ф. 4.20)
   const dtRows = [];
@@ -431,7 +463,7 @@ function buildSteps(p) {
       result: `${r2(dt)} °C`,
     });
   });
-  steps.push({ id: 'step9', title: 'Шаг 9. Перераспределение Δt_п по корпусам', ref: 'Формула 4.20', formula: 'Δt_п,j = ΣΔt_п · (Q_j/K_j) / Σ(Q_i/K_i)', rows: dtRows });
+  steps.push({ id: 'step10', title: 'Шаг 10. Перераспределение Δt_п по корпусам', ref: 'Формула 4.20', formula: 'Δt_п,j = ΣΔt_п · (Q_j/K_j) / Σ(Q_i/K_i)', rows: dtRows });
 
   // Шаг 10 — Поверхность теплообмена (ф. 4.1)
   const fRows = [];
@@ -443,7 +475,7 @@ function buildSteps(p) {
     });
   });
   fRows.push({ label: 'Суммарная площадь', expr: F.map(fi => r2(fi)).join(' + '), result: `${r2(F.reduce((a, b) => a + b, 0))} м²` });
-  steps.push({ id: 'step10', title: 'Шаг 10. Поверхность теплообмена', ref: 'Формула 4.1', formula: 'F = Q / (K · Δt_п)', rows: fRows });
+  steps.push({ id: 'step11', title: 'Шаг 11. Поверхность теплообмена', ref: 'Формула 4.1', formula: 'F = Q / (K · Δt_п)', rows: fRows });
 
   return steps;
 }
@@ -661,6 +693,7 @@ function calculateEvaporatorBattery(input) {
   // ── Промежуточные расчёты ─────────────────────────────────────
   const steps = buildSteps({
     n, Gn, xn, xk, W, P1, Pbk, dP,
+    w_dist, conc, solutionName: input.solutionName,
     P_heat, steam_heat, steam_bk, tBK, IBK,
     t_vp, P_vp, steam_vp, P_mid, steam_mid,
     delta_pp, delta_p, delta_atm, tk, tn,
