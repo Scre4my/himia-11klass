@@ -428,13 +428,8 @@ function buildSteps(p) {
     const Pmid_Pa = P_vp[i] * 1e6 + rho_sol[i] * g * H * (1 - e) / 2;
     const Pmid_MPa = Pmid_Pa / 1e6;
     dppRows.push({
-      label: `I , корпус ${i + 1}`,
-      expr: `T_ср = ${r2(steam_mid[i].T)} °C`,
-      result: `${r2(steam_mid[i].I)} кДж/кг`,
-    });
-    dppRows.push({
       label: `Корпус ${i + 1}`,
-      expr: `P_ср = ${r4(P_vp[i])} МПа + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C`,
+      expr: `P_ср = ${r4(P_vp[i])} + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C,  I = ${r2(steam_mid[i].I)} кДж/кг`,
       result: `Δ'' = ${r2(steam_mid[i].T)} − ${r2(tvp)} = ${r2(delta_pp[i])} °C`,
     });
   });
@@ -446,11 +441,11 @@ function buildSteps(p) {
     const T_K = steam_mid[i].T + 273.15;
     const r   = steam_mid[i].r;
     dpRows.push({
-      label: `О”'_Р°С‚Рј,${i + 1} — табличная депрессия`,
+      label: `Δ'_атм,${i + 1} — табл. 4.5`,
       expr: solutionName
-        ? `${solutionName}, x_${i + 1} = ${r2(conc[i] * 100)} %, T_СЃСЂ = ${r2(steam_mid[i].T)} В°C`
-        : `T_СЃСЂ = ${r2(steam_mid[i].T)} В°C`,
-      result: `${r2(delta_atm[i])} В°C`,
+        ? `${solutionName}, x_${i + 1} = ${r2(conc[i] * 100)} %, T_ср = ${r2(steam_mid[i].T)} °C`
+        : `T_ср = ${r2(steam_mid[i].T)} °C`,
+      result: `${r2(delta_atm[i])} °C`,
     });
     dpRows.push({
       label: `Корпус ${i + 1}`,
