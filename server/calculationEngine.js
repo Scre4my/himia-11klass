@@ -76,11 +76,33 @@ const STEAM_TABLE = [
   { P: 22.0725,  T: 374.0, I: 2100, r:    0, rho_v: 322.6   }, // 225 (критическая точка)
 ];
 
-/** Линейная интерполяция по таблице пара — по давлению */
+/** МНК по массивам xs/ys — линейный тренд, экстраполяция в точку x */
+function linearTrend(xs, ys, x) {
+  const n = xs.length;
+  const sumX  = xs.reduce((a, v) => a + v, 0);
+  const sumY  = ys.reduce((a, v) => a + v, 0);
+  const sumXX = xs.reduce((a, v) => a + v * v, 0);
+  const sumXY = xs.reduce((a, v, i) => a + v * ys[i], 0);
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return sumY / n;
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  return (sumY - slope * sumX) / n + slope * x;
+}
+
+/** Экстраполяция свойств пара по 3 точкам таблицы с осью xKey */
+function steamExtrapolate(pts, xKey, xVal) {
+  const xs = pts.map(p => p[xKey]);
+  const trend = key => linearTrend(xs, pts.map(p => p[key]), xVal);
+  const result = { P: trend('P'), T: trend('T'), I: trend('I'), r: trend('r'), rho_v: trend('rho_v') };
+  result[xKey] = xVal;
+  return result;
+}
+
+/** Интерполяция/экстраполяция по таблице пара — по давлению */
 function steamByPressure(P_MPa) {
   const tbl = STEAM_TABLE;
-  if (P_MPa <= tbl[0].P) return { ...tbl[0], P: P_MPa };
-  if (P_MPa >= tbl[tbl.length - 1].P) return { ...tbl[tbl.length - 1], P: P_MPa };
+  if (P_MPa <= tbl[0].P) return steamExtrapolate(tbl.slice(0, 3), 'P', P_MPa);
+  if (P_MPa >= tbl[tbl.length - 1].P) return steamExtrapolate(tbl.slice(-3), 'P', P_MPa);
   for (let i = 0; i < tbl.length - 1; i++) {
     if (P_MPa <= tbl[i + 1].P) {
       const t = (P_MPa - tbl[i].P) / (tbl[i + 1].P - tbl[i].P);
@@ -95,11 +117,11 @@ function steamByPressure(P_MPa) {
   }
 }
 
-/** Линейная интерполяция по таблице пара — по температуре насыщения */
+/** Интерполяция/экстраполяция по таблице пара — по температуре насыщения */
 function steamByTemperature(T_C) {
   const tbl = STEAM_TABLE;
-  if (T_C <= tbl[0].T) return { ...tbl[0], T: T_C };
-  if (T_C >= tbl[tbl.length - 1].T) return { ...tbl[tbl.length - 1], T: T_C };
+  if (T_C <= tbl[0].T) return steamExtrapolate(tbl.slice(0, 3), 'T', T_C);
+  if (T_C >= tbl[tbl.length - 1].T) return steamExtrapolate(tbl.slice(-3), 'T', T_C);
   for (let i = 0; i < tbl.length - 1; i++) {
     if (T_C <= tbl[i + 1].T) {
       const t = (T_C - tbl[i].T) / (tbl[i + 1].T - tbl[i].T);
@@ -429,7 +451,7 @@ function buildSteps(p) {
     const Pmid_MPa = Pmid_Pa / 1e6;
     dppRows.push({
       label: `Корпус ${i + 1}`,
-      expr: `P_ср = ${r4(P_vp[i])} + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C,  I = ${r2(steam_mid[i].I)} кДж/кг`,
+      expr: `P_ср = ${r4(P_vp[i])} + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C,  r_ср = ${r2(steam_mid[i].r)} кДж/кг`,
       result: `Δ'' = ${r2(steam_mid[i].T)} − ${r2(tvp)} = ${r2(delta_pp[i])} °C`,
     });
   });
