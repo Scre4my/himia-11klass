@@ -209,13 +209,19 @@ function interpolateSolutionDepression(points, x) {
   return points[xs[xs.length - 1]];
 }
 
-/** Экстраполяция Δ'_атм по 3 крайним точкам таблицы 4.5 (МНК) */
+/** Экстраполяция Δ'_атм за пределами таблицы 4.5:
+ *  - ниже минимума: линейная интерполяция между (0, 0) и первой точкой таблицы
+ *  - выше максимума: МНК по 3 последним точкам таблицы
+ */
 function extrapolateSolutionDepression(points, x) {
   const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
   if (xs.length === 0) return 0;
-  const boundary = x < xs[0]
-    ? xs.slice(0, Math.min(3, xs.length))
-    : xs.slice(Math.max(0, xs.length - 3));
+  if (x < xs[0]) {
+    // Вариант Б: прямая через (0, 0) и первую точку таблицы
+    return (points[xs[0]] / xs[0]) * x;
+  }
+  // Выше максимума: МНК по 3 последним точкам
+  const boundary = xs.slice(Math.max(0, xs.length - 3));
   const ys = boundary.map(k => points[k]);
   return linearTrend(boundary, ys, x);
 }
