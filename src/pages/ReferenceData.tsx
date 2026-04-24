@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import './ReferenceData.css';
 
 import { API_URL } from '../config';
+import { DEFAULT_REFERENCE_TABLES } from '../data/defaultReferenceTables';
 
 interface ReferenceTable {
   id: string;
@@ -23,7 +24,8 @@ const Cell: React.FC<{
   value: string;
   isHeader?: boolean;
   onChange: (val: string) => void;
-}> = ({ value, isHeader, onChange }) => {
+  readOnly?: boolean;
+}> = ({ value, isHeader, onChange, readOnly = false }) => {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement>(null);
@@ -55,7 +57,7 @@ const Cell: React.FC<{
   return (
     <div
       className={isHeader ? 'cell-header-val' : 'cell-value'}
-      onDoubleClick={() => setEditing(true)}
+      onDoubleClick={() => { if (!readOnly) setEditing(true); }}
       title="Двойной клик — редактировать"
     >
       {value || <span className="cell-empty">—</span>}
@@ -70,7 +72,8 @@ const EditableTable: React.FC<{
   table: ReferenceTable;
   onSave: (t: ReferenceTable) => Promise<void>;
   onDelete: (id: string) => void;
-}> = ({ table, onSave, onDelete }) => {
+  readOnly?: boolean;
+}> = ({ table, onSave, onDelete, readOnly = false }) => {
   const [name, setName]       = useState(() => table.name);
   const [headers, setHeaders] = useState<string[]>(() => table.headers);
   const [rows, setRows]       = useState<string[][]>(() => table.rows);
@@ -162,11 +165,12 @@ const EditableTable: React.FC<{
         <input
           className="rt-name-input"
           value={name}
+          readOnly={readOnly}
           onClick={e => e.stopPropagation()}
           onChange={e => { setName(e.target.value); mark(); }}
         />
         <div className="rt-card-actions" onClick={e => e.stopPropagation()}>
-          {dirty && (
+          {dirty && !readOnly && (
             <button className="btn-sm btn-blue" disabled={saving} onClick={handleSave}>
               {saving ? 'Сохранение...' : '💾 Сохранить'}
             </button>
@@ -174,11 +178,13 @@ const EditableTable: React.FC<{
           <button className="btn-sm btn-green" onClick={exportExcel} title="Экспорт в Excel">
             ⬇ Excel
           </button>
-          <button className="btn-sm btn-red" onClick={() => {
-            if (window.confirm(`Удалить таблицу «${name}»?`)) onDelete(table.id);
-          }}>
-            🗑 Удалить
-          </button>
+          {!readOnly && (
+            <button className="btn-sm btn-red" onClick={() => {
+              if (window.confirm(`Удалить таблицу «${name}»?`)) onDelete(table.id);
+            }}>
+              🗑 Удалить
+            </button>
+          )}
           <span className={`collapse-arrow${collapsed ? ' collapsed' : ''}`}>▲</span>
         </div>
       </div>
@@ -221,13 +227,13 @@ const EditableTable: React.FC<{
                   {headers.map((h, ci) => (
                     <th key={ci}>
                       <div className="th-inner">
-                        <Cell value={h} isHeader onChange={v => updateHeader(ci, v)} />
-                        <button className="btn-del-col" onClick={() => delCol(ci)} title="Удалить столбец">×</button>
+                        <Cell value={h} isHeader onChange={v => updateHeader(ci, v)} readOnly={readOnly} />
+                        {!readOnly && <button className="btn-del-col" onClick={() => delCol(ci)} title="Удалить столбец">×</button>}
                       </div>
                     </th>
                   ))}
                   <th className="col-act">
-                    <button className="btn-add-col" onClick={addCol} title="Добавить столбец">+</button>
+                    {!readOnly && <button className="btn-add-col" onClick={addCol} title="Добавить столбец">+</button>}
                   </th>
                 </tr>
               </thead>
@@ -238,10 +244,10 @@ const EditableTable: React.FC<{
                   <tr key={idx}>
                     <td className="col-num-val">{idx + 1}</td>
                     {row.map((val, ci) => (
-                      <td key={ci}><Cell value={val} onChange={v => updateCell(idx, ci, v)} /></td>
+                      <td key={ci}><Cell value={val} onChange={v => updateCell(idx, ci, v)} readOnly={readOnly} /></td>
                     ))}
                     <td className="col-act">
-                      <button className="btn-del-row" onClick={() => delRow(idx)}>×</button>
+                      {!readOnly && <button className="btn-del-row" onClick={() => delRow(idx)}>×</button>}
                     </td>
                   </tr>
                 ))}
@@ -249,7 +255,7 @@ const EditableTable: React.FC<{
             </table>
           </div>
 
-          <button className="btn-add-row" onClick={addRow}>+ Добавить строку</button>
+          {!readOnly && <button className="btn-add-row" onClick={addRow}>+ Добавить строку</button>}
         </div>
       </div>
     </div>
@@ -264,7 +270,8 @@ const TableGroup: React.FC<{
   onSave: (t: ReferenceTable) => Promise<void>;
   onDelete: (id: string) => void;
   onDeleteGroup: (ids: string[]) => void;
-}> = ({ tables, onSave, onDelete, onDeleteGroup }) => {
+  readOnly?: boolean;
+}> = ({ tables, onSave, onDelete, onDeleteGroup, readOnly = false }) => {
   const [activeId, setActiveId] = useState(tables[0]?.id ?? '');
   const [collapsed, setCollapsed] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -310,6 +317,7 @@ const TableGroup: React.FC<{
         <input
           className="tg-group-name-input"
           value={groupName}
+          readOnly={readOnly}
           placeholder="Название группы"
           onClick={e => e.stopPropagation()}
           onChange={e => { setGroupName(e.target.value); setNameDirty(true); }}
@@ -320,16 +328,18 @@ const TableGroup: React.FC<{
           <button className="btn-sm btn-green" onClick={exportGroupExcel} title="Экспорт всех листов">
             ⬇ Excel
           </button>
-          <button
-            className="btn-sm btn-red"
-            onClick={() => {
-              if (window.confirm(`Удалить группу «${groupName}» (${tables.length} листов)?`))
-                onDeleteGroup(tables.map(t => t.id));
-            }}
-            title="Удалить всю группу"
-          >
-            🗑 Удалить
-          </button>
+          {!readOnly && (
+            <button
+              className="btn-sm btn-red"
+              onClick={() => {
+                if (window.confirm(`Удалить группу «${groupName}» (${tables.length} листов)?`))
+                  onDeleteGroup(tables.map(t => t.id));
+              }}
+              title="Удалить всю группу"
+            >
+              🗑 Удалить
+            </button>
+          )}
         </div>
         <span className={`tg-collapse-arrow${collapsed ? ' collapsed' : ''}`}>▲</span>
       </div>
@@ -359,6 +369,7 @@ const TableGroup: React.FC<{
                     if (remaining.length > 0) setActiveId(remaining[0].id);
                   }
                 }}
+                readOnly={readOnly}
               />
             </div>
           )}
@@ -754,9 +765,10 @@ const ReferenceData: React.FC = () => {
 
   // Экспорт всех таблиц в один Excel-файл
   const exportAll = () => {
-    if (tables.length === 0) return;
+    const exportTables = [...DEFAULT_REFERENCE_TABLES, ...tables];
+    if (exportTables.length === 0) return;
     const wb = XLSX.utils.book_new();
-    tables.forEach(t => {
+    exportTables.forEach(t => {
       const data = [t.headers, ...t.rows];
       const ws = XLSX.utils.aoa_to_sheet(data);
       ws['!cols'] = t.headers.map((h, ci) => ({
@@ -773,6 +785,8 @@ const ReferenceData: React.FC = () => {
     XLSX.writeFile(wb, 'справочные_таблицы.xlsx');
   };
 
+  const visibleTables = [...DEFAULT_REFERENCE_TABLES, ...tables];
+
   return (
     <div className="ref-page">
       {/* Заголовок */}
@@ -782,7 +796,7 @@ const ReferenceData: React.FC = () => {
           <p className="ref-desc">Создавайте и редактируйте справочные таблицы. Двойной клик — редактировать ячейку.</p>
         </div>
         <div className="ref-header-actions">
-          {tables.length > 0 && (
+          {visibleTables.length > 0 && (
             <button className="btn-main btn-green" onClick={exportAll}>
               ⬇ Экспорт всех в Excel
             </button>
@@ -836,7 +850,7 @@ const ReferenceData: React.FC = () => {
           <div className="spinner" />
           <span>Загрузка...</span>
         </div>
-      ) : tables.length === 0 ? (
+      ) : visibleTables.length === 0 ? (
         <div className="ref-empty">
           <div className="ref-empty-icon">📋</div>
           <p>Таблиц пока нет</p>
@@ -849,7 +863,7 @@ const ReferenceData: React.FC = () => {
         const groups = new Map<string, ReferenceTable[]>();
         const standalone: ReferenceTable[] = [];
 
-        tables.forEach(t => {
+        visibleTables.forEach(t => {
           if (t.group_id) {
             const arr = groups.get(t.group_id) ?? [];
             arr.push(t);
@@ -869,6 +883,7 @@ const ReferenceData: React.FC = () => {
               onSave={handleSave}
               onDelete={handleDelete}
               onDeleteGroup={handleDeleteGroup}
+              readOnly={groupTables.every(t => t.id.startsWith('default-ref-'))}
             />
           );
         });
@@ -880,6 +895,7 @@ const ReferenceData: React.FC = () => {
               table={t}
               onSave={handleSave}
               onDelete={handleDelete}
+              readOnly={t.id.startsWith('default-ref-')}
             />
           );
         });
