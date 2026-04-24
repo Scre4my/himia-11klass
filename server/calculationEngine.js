@@ -347,13 +347,13 @@ function buildSteps(p) {
     pressureRows.push({
       label: `P_г${i + 1} — греющий пар корпуса ${i + 1}`,
       expr: `${r4(P1)} − ${i} · ${r4(dP)}`,
-      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  h''(при этом давлении) = ${r2(s.I)} кДж/кг  i' = ${r2(s.I - s.r)} кДж/кг`,
+      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  I = ${r2(s.I)} кДж/кг`,
     });
   });
   pressureRows.push({
     label: 'P_бк — барометрический конденсатор',
     expr: `${r4(Pbk)} МПа`,
-    result: `T_бк = ${r2(tBK)} °C  h''(при этом давлении) = ${r2(p.steam_bk.I)} кДж/кг  i' = ${r2(p.steam_bk.I - p.steam_bk.r)} кДж/кг`,
+    result: `T_бк = ${r2(tBK)} °C  I = ${r2(p.steam_bk.I)} кДж/кг`,
   });
   steps.push({ id: 'step3', title: 'Шаг 3. Распределение давлений по корпусам', ref: '', formula: 'P_гi = P_г1 − (i−1)·ΔP', rows: pressureRows });
 

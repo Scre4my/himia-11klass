@@ -18,6 +18,24 @@ type SolutionProperty = {
   atmosphericDepression: PointMap;
 };
 
+const trendByLeastSquares = (points: PointMap, xs: number[], x: number): number => {
+  if (xs.length === 0) return 0;
+  if (xs.length === 1) return points[xs[0]];
+
+  const n = xs.length;
+  const sumX = xs.reduce((sum, value) => sum + value, 0);
+  const sumY = xs.reduce((sum, value) => sum + points[value], 0);
+  const sumXX = xs.reduce((sum, value) => sum + value * value, 0);
+  const sumXY = xs.reduce((sum, value) => sum + value * points[value], 0);
+  const denominator = n * sumXX - sumX * sumX;
+
+  if (denominator === 0) return sumY / n;
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
+  return intercept + slope * x;
+};
+
 export const SOLUTION_PROPERTIES: SolutionProperty[] = [
   {
     key: 'CaCl2',
@@ -78,8 +96,17 @@ export const SOLUTION_PROPERTIES: SolutionProperty[] = [
 const interpolate = (points: PointMap, concentrationPercent: number): number => {
   const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
   if (xs.length === 0) return 0;
-  if (concentrationPercent <= xs[0]) return points[xs[0]];
-  if (concentrationPercent >= xs[xs.length - 1]) return points[xs[xs.length - 1]];
+
+  if (concentrationPercent < xs[0]) {
+    return trendByLeastSquares(points, xs.slice(0, Math.min(3, xs.length)), concentrationPercent);
+  }
+
+  if (concentrationPercent > xs[xs.length - 1]) {
+    return trendByLeastSquares(points, xs.slice(Math.max(0, xs.length - 3)), concentrationPercent);
+  }
+
+  if (concentrationPercent === xs[0]) return points[xs[0]];
+  if (concentrationPercent === xs[xs.length - 1]) return points[xs[xs.length - 1]];
 
   for (let i = 0; i < xs.length - 1; i++) {
     const x0 = xs[i];
