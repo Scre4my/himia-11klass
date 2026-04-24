@@ -156,6 +156,59 @@ function temperatureDepression(delta_atm, T_K, r_kJkg) {
   return 1.62e-2 * delta_atm * T_K * T_K / r_kJkg;
 }
 
+const SOLUTION_ATM_DEPRESSION = {
+  CaCl2: { 10: 1.5, 20: 4.5, 30: 10.5, 35: 14.3, 40: 19.0, 45: 24.3, 50: 30.0, 55: 36.5, 60: 43.0, 70: 60.0 },
+  KCl: { 10: 1.3, 20: 3.3, 30: 6.1, 35: 8.0 },
+  KOH: { 10: 2.2, 20: 6.0, 30: 12.2, 35: 17.0, 40: 23.6, 45: 33.0, 50: 45.0, 55: 60.4, 60: 78.8, 70: 126.5, 80: 190.3 },
+  K2CO3: { 10: 0.8, 20: 2.2, 30: 4.4, 35: 6.0, 40: 8.0, 45: 10.9, 50: 14.6, 55: 19.0, 60: 24.0 },
+  NH4NO3: { 10: 1.1, 20: 2.5, 30: 4.0, 35: 5.1, 40: 6.3, 45: 7.5, 50: 9.1, 55: 11.0, 60: 13.2, 70: 19.0, 80: 28.0 },
+  NaCl: { 10: 1.9, 20: 4.9, 30: 9.6 },
+  NaNO3: { 10: 1.2, 20: 2.6, 30: 4.5, 35: 5.6, 40: 6.8, 45: 8.4, 50: 10.0, 55: 12.0 },
+  NaOH: { 10: 2.8, 20: 8.2, 30: 17.0, 35: 22.0, 40: 28.0, 45: 35.0, 50: 42.2, 55: 50.6, 60: 59.6, 70: 79.6, 80: 106.6 },
+  Na2SO4: { 10: 0.8, 20: 1.8, 30: 2.8 },
+};
+
+function trendByLeastSquares(points, xs, x) {
+  if (xs.length === 0) return 0;
+  if (xs.length === 1) return points[xs[0]];
+
+  const n = xs.length;
+  const sumX = xs.reduce((sum, value) => sum + value, 0);
+  const sumY = xs.reduce((sum, value) => sum + points[value], 0);
+  const sumXX = xs.reduce((sum, value) => sum + value * value, 0);
+  const sumXY = xs.reduce((sum, value) => sum + value * points[value], 0);
+  const denominator = n * sumXX - sumX * sumX;
+  if (denominator === 0) return sumY / n;
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
+  return intercept + slope * x;
+}
+
+function interpolateWithTrend(points, x) {
+  const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
+  if (xs.length === 0) return 0;
+  if (x < xs[0]) return trendByLeastSquares(points, xs.slice(0, Math.min(3, xs.length)), x);
+  if (x > xs[xs.length - 1]) return trendByLeastSquares(points, xs.slice(Math.max(0, xs.length - 3)), x);
+  if (x === xs[0]) return points[xs[0]];
+  if (x === xs[xs.length - 1]) return points[xs[xs.length - 1]];
+
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x0 = xs[i];
+    const x1 = xs[i + 1];
+    if (x <= x1) {
+      const t = (x - x0) / (x1 - x0);
+      return points[x0] + t * (points[x1] - points[x0]);
+    }
+  }
+  return points[xs[xs.length - 1]];
+}
+
+function solutionAtmosphericDepression(solutionName, concentrationPercent, fallback) {
+  const points = SOLUTION_ATM_DEPRESSION[solutionName];
+  return points ? interpolateWithTrend(points, concentrationPercent) : fallback;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 3. ОСНОВНОЙ РАСЧЁТ
 // ─────────────────────────────────────────────────────────────────
@@ -375,6 +428,11 @@ function buildSteps(p) {
     const Pmid_Pa = P_vp[i] * 1e6 + rho_sol[i] * g * H * (1 - e) / 2;
     const Pmid_MPa = Pmid_Pa / 1e6;
     dppRows.push({
+      label: `I , корпус ${i + 1}`,
+      expr: `T_ср = ${r2(steam_mid[i].T)} °C`,
+      result: `${r2(steam_mid[i].I)} кДж/кг`,
+    });
+    dppRows.push({
       label: `Корпус ${i + 1}`,
       expr: `P_ср = ${r4(P_vp[i])} МПа + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C`,
       result: `Δ'' = ${r2(steam_mid[i].T)} − ${r2(tvp)} = ${r2(delta_pp[i])} °C`,
@@ -387,6 +445,13 @@ function buildSteps(p) {
   t_vp.forEach((_tvp, i) => {
     const T_K = steam_mid[i].T + 273.15;
     const r   = steam_mid[i].r;
+    dpRows.push({
+      label: `О”'_Р°С‚Рј,${i + 1} — табличная депрессия`,
+      expr: solutionName
+        ? `${solutionName}, x_${i + 1} = ${r2(conc[i] * 100)} %, T_СЃСЂ = ${r2(steam_mid[i].T)} В°C`
+        : `T_СЃСЂ = ${r2(steam_mid[i].T)} В°C`,
+      result: `${r2(delta_atm[i])} В°C`,
+    });
     dpRows.push({
       label: `Корпус ${i + 1}`,
       expr: `1,62×10⁻² · ${r2(delta_atm[i])} · ${r2(T_K)}² / ${r2(r)} = 1,62×10⁻² · ${r2(delta_atm[i])} · ${r2(T_K * T_K)} / ${r2(r)}`,
@@ -551,7 +616,7 @@ function calculateEvaporatorBattery(input) {
     : Array(n).fill(input.solutionHeatCapacity || 3.8);
 
   // Температурная депрессия при атм. давлении по корпусам (°С)
-  const delta_atm = Array.isArray(input.atmosphericDepressions) && input.atmosphericDepressions.length === n
+  let delta_atm = Array.isArray(input.atmosphericDepressions) && input.atmosphericDepressions.length === n
     ? input.atmosphericDepressions
     : Array(n).fill(input.atmosphericDepression || 1.0);
 
@@ -600,6 +665,11 @@ function calculateEvaporatorBattery(input) {
   const P_mid_Pa = P_vp.map((p, i) => p * 1e6 + rho_sol[i] * g * H * (1 - e) / 2);
   const P_mid    = P_mid_Pa.map(p => p / 1e6); // обратно в МПа
   const steam_mid = P_mid.map(steamByPressure);
+  if (input.solutionName) {
+    delta_atm = conc.map((x, i) =>
+      solutionAtmosphericDepression(input.solutionName, x * 100, delta_atm[i])
+    );
+  }
 
   const delta_pp = Array.from({ length: n }, (_, i) => steam_mid[i].T - t_vp[i]); // Δ''
 
