@@ -492,7 +492,7 @@ function buildSteps(p) {
       result: `${r2(tki)} °C`,
     });
   });
-  tkRows.push({ label: 't_н — температура исходного раствора', expr: `t_вп,1 + Δ'_н = ${r2(t_vp[0])} + ${dPPPP}`, result: `${r2(tn)} °C` });
+ 
   steps.push({ id: 'step7', title: 'Шаг 7. Температуры кипения раствора по корпусам', ref: '', formula: 't_к,i = t_г,i+1 + Δ\'_i + Δ\'\'_i + Δ\'\'\'', rows: tkRows });
 
   // Шаг 7 — Суммарная полезная ΔT
