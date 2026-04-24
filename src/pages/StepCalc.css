@@ -1,0 +1,203 @@
+.stepcalc-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+}
+
+.stepcalc-empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+}
+
+.stepcalc-nav {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.stepcalc-nav h1 {
+  font-size: 1.6rem;
+  margin: 0;
+  color: #1a1a2e;
+}
+
+.stepcalc-subtitle {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.btn-back {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #444;
+  white-space: nowrap;
+}
+
+.btn-back:hover {
+  background: #f5f5f5;
+}
+
+.stepcalc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.meta-item {
+  background: #f0f4ff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+}
+
+.meta-item span {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.meta-item strong {
+  font-size: 1rem;
+  color: #1a1a2e;
+}
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.step-card {
+  background: #fff;
+  border: 1px solid #e0e6f0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 10px;
+  background: #f7f9ff;
+  border-bottom: 1px solid #e0e6f0;
+}
+
+.step-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1a1a2e;
+}
+
+.step-ref {
+  font-size: 0.78rem;
+  color: #fff;
+  background: #4a6cf7;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-weight: 500;
+}
+
+.step-formula {
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #2d4a9a;
+  background: #eef2ff;
+  padding: 10px 18px;
+  border-bottom: 1px solid #e0e6f0;
+  letter-spacing: 0.01em;
+}
+
+.step-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.step-table th {
+  background: #f7f9ff;
+  padding: 8px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: #444;
+  border-bottom: 1px solid #e0e6f0;
+}
+
+.step-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+}
+
+.step-table tr:last-child td {
+  border-bottom: none;
+}
+
+.step-table tr:hover td {
+  background: #fafbff;
+}
+
+.step-label {
+  color: #333;
+  font-weight: 500;
+  width: 35%;
+}
+
+.step-expr {
+  color: #555;
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  width: 45%;
+  word-break: break-word;
+}
+
+.step-result {
+  color: #1a6e3a;
+  font-weight: 600;
+  width: 20%;
+  white-space: nowrap;
+}
+
+.stepcalc-summary {
+  margin-top: 32px;
+  background: #fff;
+  border: 1px solid #e0e6f0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.stepcalc-summary h2 {
+  padding: 14px 18px 10px;
+  margin: 0;
+  font-size: 1rem;
+  color: #1a1a2e;
+  background: #f7f9ff;
+  border-bottom: 1px solid #e0e6f0;
+}
+
+.no-steps {
+  color: #888;
+  text-align: center;
+  padding: 40px;
+}
+
+@media (max-width: 700px) {
+  .step-table th:nth-child(2),
+  .step-table td.step-expr {
+    display: none;
+  }
+  .step-label { width: 60%; }
+  .step-result { width: 40%; }
+}

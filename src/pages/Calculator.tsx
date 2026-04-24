@@ -442,6 +442,15 @@ const Calculator: React.FC = () => {
                 </div>
               </div>
 
+              <div className="steps-section">
+                <button
+                  className="btn-secondary"
+                  onClick={() => navigate('/steps', { state: { result } })}
+                >
+                  Промежуточные расчёты
+                </button>
+              </div>
+
               <div className="save-section">
                 {!savedProjectId ? (
                   <>

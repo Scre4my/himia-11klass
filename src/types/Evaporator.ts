@@ -91,6 +91,22 @@ export interface CalculationSummary {
   sumUsefulDeltaT: number;    // ΣΔtп (полезная), °С
 }
 
+// Одна строка промежуточного расчёта
+export interface CalcStepRow {
+  label: string;
+  expr: string;
+  result: string;
+}
+
+// Блок промежуточного расчёта (один шаг / одна формула)
+export interface CalcStep {
+  id: string;
+  title: string;
+  ref: string;       // ссылка на формулу из методики
+  formula: string;   // формула в текстовом виде
+  rows: CalcStepRow[];
+}
+
 // Сводные результаты расчёта батареи
 export interface CalculationResult {
   id?: number;
@@ -98,6 +114,7 @@ export interface CalculationResult {
   createdAt?: string;
   input: CalculationInput;
   stages: StageResult[];
+  steps?: CalcStep[];
   totalEvaporatedWater: number;     // общее испарение, кг/ч
   totalSteamConsumption: number;    // расход греющего пара (D), кг/ч
   steamEconomy: number;             // паровая экономичность W/D

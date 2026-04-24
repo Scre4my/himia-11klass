@@ -10,6 +10,10 @@
   font-size: 28px;
 }
 
+.steps-section {
+  margin: 16px 0;
+}
+
 .error-message {
   background-color: #ffebee;
   color: #c62828;

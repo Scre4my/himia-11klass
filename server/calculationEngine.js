@@ -17,30 +17,63 @@
 //    P в МПа, T в °C, I в кДж/кг (пар), r в кДж/кг (теплота исп.),
 //    i_liq = I - r в кДж/кг (конденсат), rho_v в кг/м³
 // ─────────────────────────────────────────────────────────────────
+// Источник: Таблица LVII + продолжение. Давление переведено из кгс/см² в МПа (× 0,0981).
 const STEAM_TABLE = [
-  { P: 0.005, T:  32.9, I: 2561, r: 2424, rho_v: 0.035 },
-  { P: 0.010, T:  45.8, I: 2585, r: 2393, rho_v: 0.068 },
-  { P: 0.015, T:  54.0, I: 2599, r: 2372, rho_v: 0.102 },
-  { P: 0.020, T:  60.1, I: 2610, r: 2358, rho_v: 0.131 },
-  { P: 0.030, T:  69.1, I: 2625, r: 2336, rho_v: 0.198 },
-  { P: 0.050, T:  81.3, I: 2646, r: 2305, rho_v: 0.318 },
-  { P: 0.070, T:  90.0, I: 2660, r: 2283, rho_v: 0.444 },
-  { P: 0.100, T:  99.6, I: 2676, r: 2258, rho_v: 0.590 },
-  { P: 0.150, T: 111.4, I: 2694, r: 2226, rho_v: 0.863 },
-  { P: 0.200, T: 120.2, I: 2707, r: 2202, rho_v: 1.129 },
-  { P: 0.300, T: 133.5, I: 2725, r: 2164, rho_v: 1.651 },
-  { P: 0.400, T: 143.6, I: 2739, r: 2133, rho_v: 2.163 },
-  { P: 0.500, T: 151.9, I: 2749, r: 2108, rho_v: 2.669 },
-  { P: 0.600, T: 158.9, I: 2757, r: 2086, rho_v: 3.170 },
-  { P: 0.700, T: 165.0, I: 2764, r: 2066, rho_v: 3.666 },
-  { P: 0.800, T: 170.4, I: 2769, r: 2048, rho_v: 4.161 },
-  { P: 0.900, T: 175.4, I: 2774, r: 2031, rho_v: 4.654 },
-  { P: 1.000, T: 179.9, I: 2778, r: 2015, rho_v: 5.145 },
-  { P: 1.100, T: 184.1, I: 2782, r: 2000, rho_v: 5.628 },
-  { P: 1.200, T: 188.0, I: 2785, r: 1986, rho_v: 6.124 },
-  { P: 1.300, T: 191.6, I: 2788, r: 1972, rho_v: 6.617 },
-  { P: 1.500, T: 198.3, I: 2792, r: 1947, rho_v: 7.594 },
-  { P: 2.000, T: 212.4, I: 2800, r: 1891, rho_v: 10.04 },
+  { P: 0.000981, T:   6.6, I: 2506, r: 2478, rho_v: 0.00760 }, // 0,01 кгс/см²
+  { P: 0.001472, T:  12.7, I: 2518, r: 2465, rho_v: 0.01116 }, // 0,015
+  { P: 0.001962, T:  17.1, I: 2526, r: 2455, rho_v: 0.01465 }, // 0,02
+  { P: 0.002453, T:  20.7, I: 2533, r: 2447, rho_v: 0.01809 }, // 0,025
+  { P: 0.002943, T:  23.7, I: 2539, r: 2440, rho_v: 0.02149 }, // 0,03
+  { P: 0.003924, T:  28.6, I: 2548, r: 2429, rho_v: 0.02820 }, // 0,04
+  { P: 0.004905, T:  32.5, I: 2556, r: 2420, rho_v: 0.03481 }, // 0,05
+  { P: 0.005886, T:  35.8, I: 2562, r: 2413, rho_v: 0.04133 }, // 0,06
+  { P: 0.007848, T:  41.1, I: 2573, r: 2400, rho_v: 0.05420 }, // 0,08
+  { P: 0.009810, T:  45.8, I: 2581, r: 2390, rho_v: 0.06686 }, // 0,10
+  { P: 0.011772, T:  49.0, I: 2588, r: 2382, rho_v: 0.07937 }, // 0,12
+  { P: 0.014715, T:  53.6, I: 2596, r: 2372, rho_v: 0.09789 }, // 0,15
+  { P: 0.019620, T:  59.7, I: 2607, r: 2358, rho_v: 0.1283  }, // 0,20
+  { P: 0.029430, T:  68.7, I: 2620, r: 2336, rho_v: 0.1883  }, // 0,30
+  { P: 0.039240, T:  75.4, I: 2632, r: 2320, rho_v: 0.2456  }, // 0,40
+  { P: 0.049050, T:  80.9, I: 2642, r: 2307, rho_v: 0.3027  }, // 0,50
+  { P: 0.058860, T:  85.5, I: 2650, r: 2296, rho_v: 0.3590  }, // 0,60
+  { P: 0.068670, T:  89.3, I: 2657, r: 2281, rho_v: 0.4147  }, // 0,70
+  { P: 0.078480, T:  93.0, I: 2663, r: 2278, rho_v: 0.4699  }, // 0,80
+  { P: 0.088290, T:  96.2, I: 2668, r: 2270, rho_v: 0.5246  }, // 0,90
+  { P: 0.098100, T:  99.1, I: 2677, r: 2264, rho_v: 0.5790  }, // 1,0
+  { P: 0.117720, T: 104.2, I: 2686, r: 2249, rho_v: 0.6865  }, // 1,2
+  { P: 0.137340, T: 108.7, I: 2693, r: 2237, rho_v: 0.7931  }, // 1,4
+  { P: 0.156960, T: 112.7, I: 2703, r: 2227, rho_v: 0.8980  }, // 1,6
+  { P: 0.176580, T: 116.9, I: 2709, r: 2217, rho_v: 1.000   }, // 1,8
+  { P: 0.196200, T: 119.6, I: 2710, r: 2208, rho_v: 1.107   }, // 2,0
+  { P: 0.294300, T: 132.9, I: 2730, r: 2171, rho_v: 1.618   }, // 3,0
+  { P: 0.392400, T: 142.9, I: 2744, r: 2143, rho_v: 2.128   }, // 4,0
+  { P: 0.490500, T: 151.1, I: 2754, r: 2117, rho_v: 2.614   }, // 5,0
+  { P: 0.588600, T: 158.1, I: 2768, r: 2095, rho_v: 3.104   }, // 6,0
+  { P: 0.686700, T: 164.2, I: 2769, r: 2075, rho_v: 3.591   }, // 7,0
+  { P: 0.784800, T: 169.3, I: 2776, r: 2057, rho_v: 4.075   }, // 8,0
+  { P: 0.882900, T: 174.5, I: 2784, r: 2040, rho_v: 4.575   }, // 9,0
+  { P: 0.981000, T: 179.0, I: 2784, r: 2024, rho_v: 5.037   }, // 10
+  { P: 1.079100, T: 183.2, I: 2787, r: 2009, rho_v: 5.516   }, // 11
+  { P: 1.177200, T: 187.1, I: 2790, r: 1995, rho_v: 5.996   }, // 12
+  { P: 1.275300, T: 190.7, I: 2793, r: 1981, rho_v: 6.474   }, // 13
+  { P: 1.373400, T: 194.1, I: 2795, r: 1968, rho_v: 6.952   }, // 14
+  { P: 1.471500, T: 197.4, I: 2796, r: 1956, rho_v: 7.431   }, // 15
+  { P: 1.569600, T: 200.4, I: 2798, r: 1943, rho_v: 7.900   }, // 16
+  { P: 1.667700, T: 203.4, I: 2799, r: 1931, rho_v: 8.389   }, // 17
+  { P: 1.765800, T: 206.2, I: 2799, r: 1919, rho_v: 8.868   }, // 18
+  { P: 1.863900, T: 208.8, I: 2801, r: 1909, rho_v: 9.349   }, // 19
+  { P: 1.962000, T: 211.4, I: 2802, r: 1898, rho_v: 9.830   }, // 20
+  { P: 2.943000, T: 232.8, I: 2801, r: 1800, rho_v: 14.70   }, // 30
+  { P: 3.924000, T: 249.2, I: 2793, r: 1714, rho_v: 19.73   }, // 40
+  { P: 4.905000, T: 263.9, I: 2780, r: 1637, rho_v: 24.96   }, // 50
+  { P: 5.886000, T: 274.3, I: 2746, r: 1497, rho_v: 30.41   }, // 60
+  { P: 7.848000, T: 293.6, I: 2726, r: 1432, rho_v: 42.13   }, // 80
+  { P: 9.810000, T: 309.5, I: 2684, r: 1306, rho_v: 55.11   }, // 100
+  { P: 12.2625,  T: 323.1, I: 2638, r: 1183, rho_v: 69.60   }, // 125
+  { P: 15.6960,  T: 335.0, I: 2592, r: 1061, rho_v: 85.91   }, // 160
+  { P: 17.6580,  T: 354.2, I: 2483, r:  799, rho_v: 104.6   }, // 180
+  { P: 19.6200,  T: 364.2, I: 2400, r:  617, rho_v: 162.9   }, // 200
+  { P: 22.0725,  T: 374.0, I: 2100, r:    0, rho_v: 322.6   }, // 225 (критическая точка)
 ];
 
 /** Линейная интерполяция по таблице пара — по давлению */
@@ -231,6 +264,187 @@ function solveHeatBalance(params) {
   }
 
   return { D, w: bestW, Q };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// 3а. ФОРМИРОВАНИЕ ПРОМЕЖУТОЧНЫХ РАСЧЁТОВ
+// ─────────────────────────────────────────────────────────────────
+function r4(x) { return Math.round(x * 10000) / 10000; }
+function r2(x) { return Math.round(x * 100) / 100; }
+
+function buildSteps(p) {
+  const {
+    n, Gn, xn, xk, W, P1, Pbk, dP,
+    P_heat, steam_heat, steam_bk, tBK,
+    t_vp, P_vp, steam_mid,
+    delta_pp, delta_p, delta_atm, tk, tn,
+    sumDeltaP, sumDeltaPP, sumDeltaPPP, sumDt_useful,
+    D, w, Q, QK, sumQK, dt_p, F,
+    K_arr, lossF, cn, cp_sol, H, e, dPPPP, rho_sol,
+  } = p;
+  const g = 9.81;
+  const CW = 4.19;
+  const Gn_h = Gn * 3600;
+  const W_h  = W  * 3600;
+  const steps = [];
+
+  // Шаг 1 — Материальный баланс (ф. 4.2)
+  steps.push({
+    id: 'step1',
+    title: 'Шаг 1. Материальный баланс',
+    ref: 'Формула 4.2',
+    formula: 'W = G_н · (1 − x_н / x_к)',
+    rows: [
+      { label: 'G_н — расход исходного раствора', expr: `${r2(Gn_h)} кг/ч = ${r4(Gn)} кг/с`, result: '' },
+      { label: 'x_н — начальная концентрация', expr: `${r2(xn * 100)} % = ${r4(xn)}`, result: '' },
+      { label: 'x_к — конечная концентрация',  expr: `${r2(xk * 100)} % = ${r4(xk)}`, result: '' },
+      {
+        label: 'W — суммарное испарение',
+        expr: `${r4(Gn)} · (1 − ${r4(xn)} / ${r4(xk)})`,
+        result: `${r4(W)} кг/с = ${r2(W_h)} кг/ч`,
+      },
+    ],
+  });
+
+  // Шаг 2 — Распределение давлений
+  const pressureRows = [
+    { label: 'ΔP = (P_г1 − P_бк) / n', expr: `(${r4(P1)} − ${r4(Pbk)}) / ${n}`, result: `${r4(dP)} МПа` },
+  ];
+  P_heat.forEach((ph, i) => {
+    pressureRows.push({
+      label: `P_г${i + 1} — греющий пар корпуса ${i + 1}`,
+      expr: `${r4(P1)} − ${i} · ${r4(dP)}`,
+      result: `${r4(ph)} МПа → T_г${i + 1} = ${r2(steam_heat[i].T)} °C`,
+    });
+  });
+  pressureRows.push({
+    label: 'P_бк — конденсатор',
+    expr: `${r4(Pbk)} МПа`,
+    result: `T_бк = ${r2(tBK)} °C`,
+  });
+  steps.push({ id: 'step2', title: 'Шаг 2. Распределение давлений по корпусам', ref: '', formula: 'P_гi = P_г1 − (i−1)·ΔP', rows: pressureRows });
+
+  // Шаг 3 — Вторичный пар
+  const vpRows = [];
+  t_vp.forEach((tvp, i) => {
+    const t_next = i < n - 1 ? steam_heat[i + 1].T : tBK;
+    vpRows.push({
+      label: `Корпус ${i + 1}: t_вп`,
+      expr: `t_г${i < n - 1 ? i + 2 : 'бк'} + Δ''' = ${r2(t_next)} + ${dPPPP}`,
+      result: `${r2(tvp)} °C → P_вп = ${r4(P_vp[i])} МПа`,
+    });
+  });
+  steps.push({ id: 'step3', title: 'Шаг 3. Температуры и давления вторичных паров', ref: '', formula: 't_вп,i = t_г,i+1 + Δ\'\'\'', rows: vpRows });
+
+  // Шаг 4 — Гидростатическая депрессия Δ''
+  const dppRows = [];
+  t_vp.forEach((tvp, i) => {
+    const Pmid_Pa = P_vp[i] * 1e6 + rho_sol[i] * g * H * (1 - e) / 2;
+    const Pmid_MPa = Pmid_Pa / 1e6;
+    dppRows.push({
+      label: `Корпус ${i + 1}`,
+      expr: `P_ср = ${r4(P_vp[i])} МПа + ${r2(rho_sol[i])}·${g}·${H}·${1 - e}/2 = ${r4(Pmid_MPa)} МПа → T_ср = ${r2(steam_mid[i].T)} °C`,
+      result: `Δ'' = ${r2(steam_mid[i].T)} − ${r2(tvp)} = ${r2(delta_pp[i])} °C`,
+    });
+  });
+  steps.push({ id: 'step4', title: 'Шаг 4. Гидростатическая депрессия Δ\'\'', ref: '', formula: 'P_ср = P_вп + ρ·g·H·(1−e)/2', rows: dppRows });
+
+  // Шаг 5 — Температурная депрессия Δ' (ф. 4.4)
+  const dpRows = [];
+  t_vp.forEach((_tvp, i) => {
+    const T_K = steam_mid[i].T + 273.15;
+    const r   = steam_mid[i].r;
+    dpRows.push({
+      label: `Корпус ${i + 1}`,
+      expr: `1,62×10⁻² · ${r2(delta_atm[i])} · ${r2(T_K)}² / ${r2(r)} = 1,62×10⁻² · ${r2(delta_atm[i])} · ${r2(T_K * T_K)} / ${r2(r)}`,
+      result: `Δ' = ${r2(delta_p[i])} °C`,
+    });
+  });
+  steps.push({ id: 'step5', title: 'Шаг 5. Температурная депрессия Δ\'', ref: 'Формула 4.4', formula: 'Δ\' = 1,62·10⁻² · Δ\'_атм · T²_ср / r_ср', rows: dpRows });
+
+  // Шаг 6 — Температуры кипения
+  const tkRows = [];
+  tk.forEach((tki, i) => {
+    const t_next = i < n - 1 ? steam_heat[i + 1].T : tBK;
+    tkRows.push({
+      label: `Корпус ${i + 1}: t_к`,
+      expr: `${r2(t_next)} + ${r2(delta_p[i])} + ${r2(delta_pp[i])} + ${dPPPP}`,
+      result: `${r2(tki)} °C`,
+    });
+  });
+  tkRows.push({ label: 't_н — температура исходного раствора', expr: `t_вп,1 + Δ'_н = ${r2(t_vp[0])} + ${dPPPP}`, result: `${r2(tn)} °C` });
+  steps.push({ id: 'step6', title: 'Шаг 6. Температуры кипения раствора по корпусам', ref: '', formula: 't_к,i = t_г,i+1 + Δ\'_i + Δ\'\'_i + Δ\'\'\'', rows: tkRows });
+
+  // Шаг 7 — Суммарная полезная ΔT
+  steps.push({
+    id: 'step7',
+    title: 'Шаг 7. Суммарная полезная разность температур',
+    ref: '',
+    formula: 'ΣΔt_п = T_г1 − t_бк − ΣΔ\' − ΣΔ\'\' − ΣΔ\'\'\'',
+    rows: [
+      { label: 'T_г1 − t_бк', expr: `${r2(steam_heat[0].T)} − ${r2(tBK)}`, result: `${r2(steam_heat[0].T - tBK)} °C` },
+      { label: 'ΣΔ\' (температурная)', expr: delta_p.map(d => r2(d)).join(' + '), result: `${r2(sumDeltaP)} °C` },
+      { label: 'ΣΔ\'\' (гидростатическая)', expr: delta_pp.map(d => r2(d)).join(' + '), result: `${r2(sumDeltaPP)} °C` },
+      { label: 'ΣΔ\'\'\' (гидродинамическая)', expr: `${n} · ${dPPPP}`, result: `${r2(sumDeltaPPP)} °C` },
+      { label: 'ΣΔt_п полезная', expr: `${r2(steam_heat[0].T - tBK)} − ${r2(sumDeltaP)} − ${r2(sumDeltaPP)} − ${r2(sumDeltaPPP)}`, result: `${r2(sumDt_useful)} °C` },
+    ],
+  });
+
+  // Шаг 8 — Тепловые балансы (ф. 4.8–4.11)
+  const hbRows = [];
+  const I_next1 = n > 1 ? steam_heat[1].I : tBK + 2500;
+  const r_vap_eff_0 = I_next1 - CW * tk[0];
+  const r_heat_0 = steam_heat[0].I - CW * steam_heat[0].T;
+  hbRows.push({
+    label: 'Q₁ — тепловая нагрузка корпуса 1',
+    expr: `${r2(lossF)} · [${r4(Gn)} · ${r4(cn)} · (${r2(tk[0])} − ${r2(tn)}) + ${r4(w[0])} · ${r2(r_vap_eff_0)}]`,
+    result: `${r2(Q[0])} кВт`,
+  });
+  hbRows.push({
+    label: 'D — расход свежего пара',
+    expr: `Q₁ / r_г1 = ${r2(Q[0])} / ${r2(r_heat_0)}`,
+    result: `${r2(D)} кг/с = ${r2(D * 3600)} кг/ч`,
+  });
+  for (let i = 1; i < n; i++) {
+    const r_heat_i = steam_heat[i].I - CW * steam_heat[i].T;
+    hbRows.push({
+      label: `Q${i + 1} — тепловая нагрузка корпуса ${i + 1}`,
+      expr: `w${i} · r_г${i + 1} = ${r4(w[i - 1])} · ${r2(r_heat_i)}`,
+      result: `${r2(Q[i])} кВт`,
+    });
+    hbRows.push({
+      label: `w${i + 1} — испарение в корпусе ${i + 1}`,
+      expr: `(из теплового баланса)`,
+      result: `${r4(w[i])} кг/с = ${r2(w[i] * 3600)} кг/ч`,
+    });
+  }
+  steps.push({ id: 'step8', title: 'Шаг 8. Тепловые балансы по корпусам', ref: 'Формулы 4.8–4.11', formula: 'D·r_г1 = φ·[G_н·c_н·(t_к1−t_н) + w₁·r_вп,эфф]', rows: hbRows });
+
+  // Шаг 9 — Перераспределение ΔT (ф. 4.20)
+  const dtRows = [];
+  dtRows.push({ label: 'Σ(Q_j / K_j)', expr: QK.map((qk, i) => `Q${i + 1}/K${i + 1} = ${r2(Q[i])}/${K_arr[i]} = ${r4(qk)}`).join('; '), result: `Σ = ${r4(sumQK)}` });
+  dt_p.forEach((dt, i) => {
+    dtRows.push({
+      label: `Δt_п,${i + 1} — корпус ${i + 1}`,
+      expr: `${r2(sumDt_useful)} · ${r4(QK[i])} / ${r4(sumQK)}`,
+      result: `${r2(dt)} °C`,
+    });
+  });
+  steps.push({ id: 'step9', title: 'Шаг 9. Перераспределение Δt_п по корпусам', ref: 'Формула 4.20', formula: 'Δt_п,j = ΣΔt_п · (Q_j/K_j) / Σ(Q_i/K_i)', rows: dtRows });
+
+  // Шаг 10 — Поверхность теплообмена (ф. 4.1)
+  const fRows = [];
+  F.forEach((fi, i) => {
+    fRows.push({
+      label: `F_${i + 1} — площадь корпуса ${i + 1}`,
+      expr: `Q${i + 1}·1000 / (K${i + 1}·|Δt_п,${i + 1}|) = ${r2(Q[i])}·1000 / (${K_arr[i]}·${r2(Math.abs(dt_p[i]))})`,
+      result: `${r2(fi)} м²`,
+    });
+  });
+  fRows.push({ label: 'Суммарная площадь', expr: F.map(fi => r2(fi)).join(' + '), result: `${r2(F.reduce((a, b) => a + b, 0))} м²` });
+  steps.push({ id: 'step10', title: 'Шаг 10. Поверхность теплообмена', ref: 'Формула 4.1', formula: 'F = Q / (K · Δt_п)', rows: fRows });
+
+  return steps;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -443,15 +657,26 @@ function calculateEvaporatorBattery(input) {
   const totalHeatExchangeArea  = F.reduce((a, b) => a + b, 0);
   const averageHeatExchangeArea = totalHeatExchangeArea / n;
 
+  // ── Промежуточные расчёты ─────────────────────────────────────
+  const steps = buildSteps({
+    n, Gn, xn, xk, W, P1, Pbk, dP,
+    P_heat, steam_heat, steam_bk, tBK, IBK,
+    t_vp, P_vp, steam_vp, P_mid, steam_mid,
+    delta_pp, delta_p, delta_atm, tk, tn,
+    sumDeltaP, sumDeltaPP, sumDeltaPPP, sumDt_useful,
+    D, w, Q, QK, sumQK, dt_p, F,
+    K_arr, lossF, cn, cp_sol, H, e, dPPPP, rho_sol,
+  });
+
   return {
     input,
     stages,
-    totalEvaporatedWater:    Math.round(totalEvaporatedWater  * 100) / 100, // кг/ч
-    totalSteamConsumption:   Math.round(totalSteamConsumption * 100) / 100, // кг/ч
+    steps,
+    totalEvaporatedWater:    Math.round(totalEvaporatedWater  * 100) / 100,
+    totalSteamConsumption:   Math.round(totalSteamConsumption * 100) / 100,
     steamEconomy:            Math.round(steamEconomy * 1000) / 1000,
-    totalHeatExchangeArea:   Math.round(totalHeatExchangeArea   * 100) / 100, // м²
-    averageHeatExchangeArea: Math.round(averageHeatExchangeArea * 100) / 100, // м²
-    // Дополнительные итоги
+    totalHeatExchangeArea:   Math.round(totalHeatExchangeArea   * 100) / 100,
+    averageHeatExchangeArea: Math.round(averageHeatExchangeArea * 100) / 100,
     summary: {
       W_total_kgs:     Math.round(W * 10000) / 10000,
       steamPressure:   P1,

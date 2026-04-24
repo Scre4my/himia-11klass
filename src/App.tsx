@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Calculator from './pages/Calculator';
 import ReferenceData from './pages/ReferenceData';
 import SavedProjects from './pages/SavedProjects';
+import StepCalc from './pages/StepCalc';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -24,6 +25,7 @@ function App() {
             <Route path="/reference" element={<ProtectedRoute><ReferenceData /></ProtectedRoute>} />
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+            <Route path="/steps" element={<ProtectedRoute><StepCalc /></ProtectedRoute>} />
           </Routes>
         </div>
       </Router>
