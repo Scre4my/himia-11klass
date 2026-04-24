@@ -76,6 +76,7 @@ const STEAM_TABLE = [
   { P: 22.0725,  T: 374.0, I: 2100, r:    0, rho_v: 322.6   }, // 225 (критическая точка)
 ];
 
+
 /** МНК по массивам xs/ys — линейный тренд, экстраполяция в точку x */
 function linearTrend(xs, ys, x) {
   const n = xs.length;
@@ -190,30 +191,12 @@ const SOLUTION_ATM_DEPRESSION = {
   Na2SO4: { 10: 0.8, 20: 1.8, 30: 2.8 },
 };
 
-function trendByLeastSquares(points, xs, x) {
-  if (xs.length === 0) return 0;
-  if (xs.length === 1) return points[xs[0]];
 
-  const n = xs.length;
-  const sumX = xs.reduce((sum, value) => sum + value, 0);
-  const sumY = xs.reduce((sum, value) => sum + points[value], 0);
-  const sumXX = xs.reduce((sum, value) => sum + value * value, 0);
-  const sumXY = xs.reduce((sum, value) => sum + value * points[value], 0);
-  const denominator = n * sumXX - sumX * sumX;
-  if (denominator === 0) return sumY / n;
-
-  const slope = (n * sumXY - sumX * sumY) / denominator;
-  const intercept = (sumY - slope * sumX) / n;
-  return intercept + slope * x;
-}
-
-function interpolateWithTrend(points, x) {
+function interpolateSolutionDepression(points, x) {
   const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
   if (xs.length === 0) return 0;
-  if (x < xs[0]) return trendByLeastSquares(points, xs.slice(0, Math.min(3, xs.length)), x);
-  if (x > xs[xs.length - 1]) return trendByLeastSquares(points, xs.slice(Math.max(0, xs.length - 3)), x);
-  if (x === xs[0]) return points[xs[0]];
-  if (x === xs[xs.length - 1]) return points[xs[xs.length - 1]];
+  if (x <= xs[0]) return points[xs[0]];
+  if (x >= xs[xs.length - 1]) return points[xs[xs.length - 1]];
 
   for (let i = 0; i < xs.length - 1; i++) {
     const x0 = xs[i];
@@ -226,9 +209,25 @@ function interpolateWithTrend(points, x) {
   return points[xs[xs.length - 1]];
 }
 
+/** Экстраполяция Δ'_атм по 3 крайним точкам таблицы 4.5 (МНК) */
+function extrapolateSolutionDepression(points, x) {
+  const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
+  if (xs.length === 0) return 0;
+  const boundary = x < xs[0]
+    ? xs.slice(0, Math.min(3, xs.length))
+    : xs.slice(Math.max(0, xs.length - 3));
+  const ys = boundary.map(k => points[k]);
+  return linearTrend(boundary, ys, x);
+}
+
 function solutionAtmosphericDepression(solutionName, concentrationPercent, fallback) {
   const points = SOLUTION_ATM_DEPRESSION[solutionName];
-  return points ? interpolateWithTrend(points, concentrationPercent) : fallback;
+  if (!points) return fallback;
+  const xs = Object.keys(points).map(Number).sort((a, b) => a - b);
+  if (concentrationPercent < xs[0] || concentrationPercent > xs[xs.length - 1]) {
+    return extrapolateSolutionDepression(points, concentrationPercent);
+  }
+  return interpolateSolutionDepression(points, concentrationPercent);
 }
 
 // ─────────────────────────────────────────────────────────────────
