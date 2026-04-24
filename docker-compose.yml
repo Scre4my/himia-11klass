@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: products_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: my_new_password
     ports:
       - "5433:5432"
     volumes:
@@ -29,7 +29,7 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_PASSWORD: my_new_password
       DB_NAME: products_db
     ports:
       - "5001:5000"
