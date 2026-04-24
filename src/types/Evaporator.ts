@@ -1,5 +1,13 @@
 // Типы выпарных установок
-export type EvaporatorType = 'direct-flow' | 'forced-circulation' | 'film-rising' | 'film-falling' | 'vacuum';
+export type EvaporatorType =
+  | 'type-1-natural-circulation'
+  | 'type-2-forced-circulation'
+  | 'type-3-film'
+  | 'direct-flow'
+  | 'forced-circulation'
+  | 'film-rising'
+  | 'film-falling'
+  | 'vacuum';
 
 // Направление потока
 export type FlowDirection = 'direct' | 'counter' | 'mixed';
@@ -7,6 +15,7 @@ export type FlowDirection = 'direct' | 'counter' | 'mixed';
 // Входные данные для расчёта
 export interface CalculationInput {
   evaporatorType: EvaporatorType;
+  evaporatorExecution?: string;
   flowDirection: FlowDirection;
   numberOfEffects: number;              // количество корпусов (1-10)
   feedFlowRate: number;                 // Gн - расход исходного раствора, кг/ч

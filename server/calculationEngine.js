@@ -315,7 +315,7 @@ function buildSteps(p) {
     pressureRows.push({
       label: `P_г${i + 1} — греющий пар корпуса ${i + 1}`,
       expr: `${r4(P1)} − ${i} · ${r4(dP)}`,
-      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  h''(при этом давлении) = ${r2(s.I)} кДж/кг  i' = ${r2(s.I - s.r)} кДж/кг`,
+      result: `${r4(ph)} МПа  T = ${r2(s.T)} °C  I = ${r2(s.I)} кДж/кг`,
     });
   });
   pressureRows.push({

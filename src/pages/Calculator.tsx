@@ -6,12 +6,14 @@ import EvaporatorDiagram from '../components/EvaporatorDiagram';
 import Charts from '../components/Charts';
 import ExportButtons from '../components/ExportButtons';
 import './Calculator.css';
+import { EVAPORATOR_INSTALLATIONS, getInstallationByValue } from '../data/evaporatorInstallations';
 
 import { API_URL } from '../config';
 
 // Значения по умолчанию (пример из методики Дытнерского)
 const defaultFormData: CalculationInput = {
-  evaporatorType: 'direct-flow',
+  evaporatorType: 'type-1-natural-circulation',
+  evaporatorExecution: 'type-1-execution-1',
   flowDirection: 'direct',
   numberOfEffects: 3,
   feedFlowRate: 10000,
@@ -49,6 +51,15 @@ const Calculator: React.FC = () => {
   /** Обновление скалярного поля */
   const handleChange = (field: keyof CalculationInput, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleEvaporatorTypeChange = (value: string) => {
+    const selected = getInstallationByValue(value);
+    setFormData(prev => ({
+      ...prev,
+      evaporatorType: value as CalculationInput['evaporatorType'],
+      evaporatorExecution: selected?.executions[0]?.value ?? '',
+    }));
   };
 
   /** Обновление элемента массива */
@@ -194,6 +205,9 @@ const Calculator: React.FC = () => {
   };
 
   const n = formData.numberOfEffects;
+  const selectedInstallation = getInstallationByValue(formData.evaporatorType);
+  const executionOptions = selectedInstallation?.executions ?? [];
+  const selectedExecution = executionOptions.find(item => item.value === formData.evaporatorExecution);
 
   return (
     <div className="calculator-container">
@@ -214,13 +228,26 @@ const Calculator: React.FC = () => {
 
             <div className="form-group">
               <label>Тип установки:</label>
-              <select value={formData.evaporatorType} onChange={e => handleChange('evaporatorType', e.target.value)}>
-                <option value="direct-flow">Прямоточная многокорпусная</option>
-                <option value="forced-circulation">С принудительной циркуляцией</option>
-                <option value="film-rising">Плёночная (восходящая плёнка)</option>
-                <option value="film-falling">Плёночная (падающая плёнка)</option>
-                <option value="vacuum">Вакуумная</option>
+              <select value={formData.evaporatorType} onChange={e => handleEvaporatorTypeChange(e.target.value)}>
+                {EVAPORATOR_INSTALLATIONS.map(item => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
               </select>
+            </div>
+
+            <div className="form-group">
+              <label>Исполнение:</label>
+              <select
+                value={formData.evaporatorExecution ?? executionOptions[0]?.value ?? ''}
+                onChange={e => handleChange('evaporatorExecution', e.target.value)}
+              >
+                {executionOptions.map(item => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+              {selectedExecution && (
+                <small className="field-hint">{selectedExecution.purpose}</small>
+              )}
             </div>
 
             <div className="form-group">

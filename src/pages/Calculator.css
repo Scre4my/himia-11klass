@@ -73,6 +73,14 @@
   box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
 }
 
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .button-group {
   display: flex;
   gap: 12px;

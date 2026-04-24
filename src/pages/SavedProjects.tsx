@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { getInstallationByValue } from '../data/evaporatorInstallations';
 import './SavedProjects.css';
 
 interface ProjectRow {
@@ -42,12 +43,18 @@ interface ProjectDetail {
 }
 
 const EVAPORATOR_LABELS: Record<string, string> = {
+  'type-1-natural-circulation': 'Естественная циркуляция',
+  'type-2-forced-circulation': 'Принудительная циркуляция',
+  'type-3-film': 'Пленочные',
   'direct-flow': 'Прямоточная',
   'forced-circulation': 'Принудительная циркуляция',
   'film-rising': 'Плёночная (восх.)',
   'film-falling': 'Плёночная (пад.)',
   'vacuum': 'Вакуумная',
 };
+
+const getEvaporatorLabel = (value: string) =>
+  getInstallationByValue(value)?.label ?? EVAPORATOR_LABELS[value] ?? value;
 
 const FLOW_LABELS: Record<string, string> = {
   'direct': 'Прямоток',
@@ -155,7 +162,7 @@ const SavedProjects: React.FC = () => {
                 <div className="sp-card-main">
                   <span className="sp-card-name">{p.name}</span>
                   <div className="sp-card-meta">
-                    <span className="sp-badge">{EVAPORATOR_LABELS[p.evaporator_type] || p.evaporator_type}</span>
+                    <span className="sp-badge">{getEvaporatorLabel(p.evaporator_type)}</span>
                     <span className="sp-badge">{FLOW_LABELS[p.flow_direction] || p.flow_direction}</span>
                     <span className="sp-badge sp-badge--blue">{p.number_of_effects} корп.</span>
                   </div>
