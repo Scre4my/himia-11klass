@@ -36,7 +36,7 @@ const Navbar: React.FC = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/calculator" className="navbar-logo">
+        <Link to="/" className="navbar-logo">
           <img src={logo} alt="" />
           ТехноПар
         </Link>

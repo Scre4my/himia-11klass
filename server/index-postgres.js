@@ -96,7 +96,7 @@ const initDB = async () => {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         username VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'user',
+        role VARCHAR(50) DEFAULT 'engineer',
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -225,7 +225,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [safe, hash, 'user']
+      [safe, hash, 'engineer']
     );
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
@@ -267,6 +267,54 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (только admin)
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Доступ запрещён' });
+  try {
+    const result = await pool.query('SELECT id, username, role, created_at FROM users ORDER BY created_at ASC');
+    res.json({ users: result.rows });
+  } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
+});
+
+app.post('/api/admin/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Доступ запрещён' });
+  try {
+    const { username, password, role } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Укажите логин и пароль' });
+    if (!['admin', 'engineer'].includes(role)) return res.status(400).json({ error: 'Недопустимая роль' });
+    if (username.length < 3 || password.length < 6)
+      return res.status(400).json({ error: 'Логин минимум 3 символа, пароль минимум 6' });
+    const safe = sanitizeInput(username.trim());
+    const exists = await pool.query('SELECT id FROM users WHERE username=$1', [safe]);
+    if (exists.rows.length) return res.status(400).json({ error: 'Пользователь уже существует' });
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (username, password_hash, role) VALUES ($1,$2,$3) RETURNING id, username, role',
+      [safe, hash, role]
+    );
+    res.status(201).json({ user: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
+});
+
+app.put('/api/admin/users/:id/role', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Доступ запрещён' });
+  if (req.user.id === req.params.id) return res.status(403).json({ error: 'Нельзя изменить свою роль' });
+  try {
+    const { role } = req.body;
+    if (!['admin', 'engineer'].includes(role)) return res.status(400).json({ error: 'Недопустимая роль' });
+    if (!isUUID(req.params.id)) return res.status(400).json({ error: 'Некорректный ID' });
+    const result = await pool.query(
+      'UPDATE users SET role=$1 WHERE id=$2 RETURNING id, username, role',
+      [role, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Пользователь не найден' });
+    res.json({ user: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: 'Ошибка сервера' }); }
 });
 
 // ═══════════════════════════════════════════════════════════════

@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Landing from './pages/Landing';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Calculator from './pages/Calculator';
@@ -16,7 +17,7 @@ function App() {
       <div className="App">
         <Navbar />
         <Routes>
-          <Route path="/" element={<Navigate to="/calculator" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/calculator" element={<ProtectedRoute><Calculator /></ProtectedRoute>} />
           <Route path="/projects" element={<ProtectedRoute><SavedProjects /></ProtectedRoute>} />
           <Route path="/reference" element={<ProtectedRoute><ReferenceData /></ProtectedRoute>} />
