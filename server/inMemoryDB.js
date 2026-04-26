@@ -44,7 +44,7 @@ const initDB = () => {
 // Функции для работы с пользователями
 const users = {
   // Создать пользователя
-  create: async (username, password_hash, role = 'user') => {
+  create: async (username, password_hash, role = 'engineer') => {
     const user = {
       id: generateUUID(),
       username,
@@ -69,6 +69,14 @@ const users = {
   // Получить всех пользователей
   findAll: async () => {
     return db.users;
+  },
+
+  // Обновить роль пользователя
+  updateRole: async (id, role) => {
+    const user = db.users.find(u => u.id === id);
+    if (!user) return null;
+    user.role = role;
+    return user;
   }
 };
 

@@ -6,11 +6,23 @@ import logo from "../misc/logo.png"
 const Navbar: React.FC = () => {
   const location = useLocation();
   const [isAuth, setIsAuth] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
     setIsAuth(!!token);
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setIsAdmin(user.role === 'admin');
+      } catch {
+        setIsAdmin(false);
+      }
+    } else {
+      setIsAdmin(false);
+    }
   }, [location]);
 
   useEffect(() => { setMenuOpen(false); }, [location]);
@@ -24,7 +36,7 @@ const Navbar: React.FC = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">
+        <Link to="/calculator" className="navbar-logo">
           <img src={logo} alt="" />
           ТехноПар
         </Link>
@@ -34,11 +46,11 @@ const Navbar: React.FC = () => {
         </button>
 
         <div className={`navbar-links ${menuOpen ? 'navbar-links--open' : ''}`}>
-          {link('/', 'Каталог')}
-          {link('/calculator', 'Калькулятор')}
-          {link('/projects', 'Проекты')}
-          {link('/reference', 'Справочник')}
-          {isAuth ? link('/admin', 'Админка') : link('/login', 'Вход')}
+          {isAuth && link('/calculator', 'Калькулятор')}
+          {isAuth && link('/projects', 'Проекты')}
+          {isAuth && link('/reference', 'Справочник')}
+          {isAuth && isAdmin && link('/admin', 'Пользователи')}
+          {!isAuth && link('/login', 'Вход')}
         </div>
       </div>
     </nav>

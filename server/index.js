@@ -83,7 +83,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await inMemoryDB.users.create(username.trim(), hashedPassword, 'user');
+    const user = await inMemoryDB.users.create(username.trim(), hashedPassword, 'engineer');
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
@@ -148,6 +148,70 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     res.json({ user: { id: user.id, username: user.username, role: user.role } });
   } catch (err) {
     console.error('Ошибка получения профиля:', err);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// === ЭНДПОИНТЫ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ (только админ) ===
+
+// Получить всех пользователей
+app.get('/api/admin/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Доступ только для администраторов' });
+  }
+  try {
+    const allUsers = await inMemoryDB.users.findAll();
+    res.json({ users: allUsers.map(u => ({ id: u.id, username: u.username, role: u.role, created_at: u.created_at })) });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Создать пользователя
+app.post('/api/admin/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Доступ только для администраторов' });
+  }
+  try {
+    const { username, password, role } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Укажите логин и пароль' });
+    }
+    if (!['admin', 'engineer'].includes(role)) {
+      return res.status(400).json({ error: 'Недопустимая роль' });
+    }
+    if (username.length < 3 || password.length < 6) {
+      return res.status(400).json({ error: 'Логин минимум 3 символа, пароль минимум 6' });
+    }
+    const exists = await inMemoryDB.users.findByUsername(username.trim());
+    if (exists) {
+      return res.status(400).json({ error: 'Пользователь уже существует' });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const user = await inMemoryDB.users.create(username.trim(), hash, role);
+    res.status(201).json({ user: { id: user.id, username: user.username, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Изменить роль пользователя (нельзя изменить свою роль)
+app.put('/api/admin/users/:id/role', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Доступ только для администраторов' });
+  }
+  if (req.user.id === req.params.id) {
+    return res.status(403).json({ error: 'Нельзя изменить свою роль' });
+  }
+  try {
+    const { role } = req.body;
+    if (!['admin', 'engineer'].includes(role)) {
+      return res.status(400).json({ error: 'Недопустимая роль' });
+    }
+    const user = await inMemoryDB.users.updateRole(req.params.id, role);
+    if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+    res.json({ user: { id: user.id, username: user.username, role: user.role } });
+  } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
